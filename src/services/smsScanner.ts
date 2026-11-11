@@ -38,6 +38,7 @@ export interface ScanSummary {
 }
 
 export interface ScannerOptions {
+  forceFullScan?: boolean;
   batchSize?: number;
   maxMessages?: number;
   signal?: AbortSignal;
@@ -81,7 +82,12 @@ async function scanInbox(
   const lastCheckpoint = Number(currentState.prefs?.lastSmsScanTimestamp || 0);
 
   // Apply safe overlap window on incremental scans
-  const sinceTimestamp = currentState.prefs.smsParserVersion === SMS_PARSER_VERSION && lastCheckpoint > 0 ? Math.max(0, lastCheckpoint - OVERLAP_WINDOW_MS) : 0;
+  const fullScan = options.forceFullScan || currentState.prefs.fullSmsRescanPending === '1' || currentState.prefs.smsParserVersion !== SMS_PARSER_VERSION;
+  const sinceTimestamp = !fullScan && lastCheckpoint > 0 ? Math.max(0, lastCheckpoint - OVERLAP_WINDOW_MS) : 0;
+  if(fullScan){
+    currentState={...currentState,prefs:{...currentState.prefs,fullSmsRescanPending:'1'}};
+    options.onBatch?.(currentState);
+  }
 
   let offset = 0;
   let hasMore = true;
@@ -219,8 +225,9 @@ async function scanInbox(
       lastSmsScanTimestamp: String(stoppedEarly ? lastCheckpoint : highestTimestamp),
       lastSmsScanIso: nowIso,
       lastSmsScanCount: String(totalScanned),
-      lastSmsScanStatus: stoppedEarly ? 'incomplete' : 'complete'
-      ,smsParserVersion: stoppedEarly ? currentState.prefs.smsParserVersion || '' : SMS_PARSER_VERSION
+      lastSmsScanStatus: stoppedEarly ? 'incomplete' : 'complete',
+      fullSmsRescanPending: stoppedEarly && fullScan ? '1' : '0',
+      smsParserVersion: stoppedEarly ? currentState.prefs.smsParserVersion || '' : SMS_PARSER_VERSION
     }
   };
 

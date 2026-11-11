@@ -46,7 +46,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
     }
   };
 
-  const startScan = async () => {
+  const startScan = async (forceFullScan = false) => {
     setError('');
     setScanning(true);
     setSummary(null);
@@ -54,6 +54,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
 
     try {
       const result = await runInboxScan(getState(), {
+        forceFullScan,
         getState,
         onBatch: next => update(() => next),
         clearDemoData: true,
@@ -176,11 +177,13 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
           {error && <p className="out" role="alert">{error}</p>}
 
           <div className="actions">
-            <button className="primary" disabled={scanning || permissionStatus !== 'granted'} onClick={startScan}>
+            <button className="primary" disabled={scanning || permissionStatus !== 'granted'} onClick={()=>startScan()}>
               <RefreshCw size={14} /> {state.prefs?.lastSmsScanTimestamp ? 'Rescan for New Messages' : 'Start Full Inbox Scan'}
             </button>
+            <button disabled={scanning || permissionStatus !== 'granted'} onClick={()=>startScan(true)}>Rescan entire inbox</button>
             <button disabled={scanning} onClick={onClose}>Close</button>
           </div>
+          <small>Rescan entire inbox includes older supported messages. Existing transactions and edits are preserved; duplicates are skipped.</small>
         </div>
       )}
     </div>

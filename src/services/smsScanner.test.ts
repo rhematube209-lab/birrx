@@ -5,6 +5,7 @@ import {
   isSupportedSender,
   normalizeSender,
   OVERLAP_WINDOW_MS
+  ,SMS_PARSER_VERSION
 } from './smsScanner';
 import { type RawSmsMessage } from './androidSmsBridge';
 
@@ -27,6 +28,15 @@ const cbeSample = (ref = 'SCAN-CBE-01', amt = '300.00') =>
   `Dear Example You have received ETB ${amt} from account 1****0000 (Example Sender) to your account 1****6418. Your current balance is ETB 5,000.00. Thanks for Banking with CBE. https://mbreciept.cbe.com.et/${ref}`;
 
 describe('Android SMS Scanner Core', () => {
+  it('recovers old messages with an explicit full scan and retries interrupted full scans without duplicating edited records',async()=>{
+    const initial=emptyState();initial.prefs={...initial.prefs,lastSmsScanTimestamp:String(Date.parse('2026-11-11T12:00:00Z')),smsParserVersion:SMS_PARSER_VERSION};
+    const message={id:'old-message',sender:'CBE',body:cbeSample('OLD-RECOVERY'),timestamp:Date.parse('2026-11-07T06:00:00Z')};
+    const first=await runInboxScan(initial,{forceFullScan:true,maxMessages:1,mockFetcher:async(since)=>{expect(since).toBe(0);return {messages:[message],hasMore:true};}});
+    expect(first.state.prefs.fullSmsRescanPending).toBe('1');expect(first.summary.newTransactions).toBe(1);
+    first.state.tx[0].note='Keep my edit';
+    const retry=await runInboxScan(first.state,{mockFetcher:async(since)=>{expect(since).toBe(0);return {messages:[message],hasMore:false};}});
+    expect(retry.state.tx).toHaveLength(1);expect(retry.state.tx[0].note).toBe('Keep my edit');expect(retry.summary.duplicatesSkipped).toBe(1);expect(retry.state.prefs.fullSmsRescanPending).toBe('0');
+  });
   it('identifies and normalizes supported sender IDs accurately', () => {
     expect(isSupportedSender('CBE')).toBe(true);
     expect(isSupportedSender('cbe')).toBe(true);
