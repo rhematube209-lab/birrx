@@ -139,3 +139,11 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 SMS inbox reading, continuous background message processing, real device authentication/encrypted app lock and reliable closed-app stats delivery require native integration. The browser provides manual entry, CSV, pasted-message import, real permission-status checks, notification permission requests and receipt file/camera capture where supported. Camera/notification APIs may need HTTPS; a local-network HTTP page offers file selection and manual alternatives.
 
 App lock is explicitly a demo privacy cover with PIN **2468**, not encryption. Stats scheduling is a saved demo preference. Reference rates are manual, not live. The interface is English; Amharic is a saved preference clearly marked as awaiting translation. No analytics, cloud sync, live banking or payment execution is included.
+
+### Android notifications
+
+Open Settings > Notifications, allow Android permission, then enable transaction, plan, goal and recurring-payment alerts separately. Send a test notification from the same screen.
+
+Supported incoming financial SMS creates a private notification even while the app is closed (except when Android force-stops the app). Tap it to sync and open the matching transaction category editor; unsupported or ambiguous messages open Review. Historical inbox rescans do not send a notification per imported SMS. Manual entries/imports can also open their transaction from a notification.
+
+Plans alert at 80% and 100% of the current month's limit. Goals alert at 50% and completion, with weekly Monday reminders for unfinished goals. Recurring payments remind at 09:00 EAT the day before and on their due date, including a catch-up reminder for overdue items. Monthly planning reminders open Plan. Editing/deleting items refreshes pending reminders; reminders do not create transactions or goal contributions. Reminder scheduling is bounded to the next 60 alerts; reopen BirrX periodically to refresh the horizon. Android may delay these inexact reminders for battery saving. Notification text contains no amounts or personal names. Browser notification support is limited to the test action while open; background SMS/reminders use Android.

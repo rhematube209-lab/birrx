@@ -34,6 +34,25 @@ public class SmsScannerPlugin extends Plugin {
 
     private static SmsScannerPlugin instance;
 
+    @PluginMethod
+    public void setNotificationEnabled(PluginCall call) {
+        getContext().getSharedPreferences("birrx-notifications", 0).edit().putBoolean("transactions", call.getBoolean("enabled", false)).apply();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void consumeNotificationAction(PluginCall call) {
+        JSObject result = new JSObject();
+        android.content.Intent intent = getActivity().getIntent();
+        if (intent != null && intent.hasExtra("birrxSmsTimestamp")) {
+            result.put("timestamp", intent.getLongExtra("birrxSmsTimestamp", 0));
+            result.put("bank", intent.getStringExtra("birrxSmsBank"));
+            result.put("reference", intent.getStringExtra("birrxSmsReference"));
+            intent.removeExtra("birrxSmsTimestamp");
+        }
+        call.resolve(result);
+    }
+
     @Override
     public void load() {
         super.load();
