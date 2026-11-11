@@ -56,6 +56,8 @@ CBE and Telebirr principal amounts and separately stated charges create separate
 
 Unrecognized messages can be reviewed manually. Only date/status metadata is retained. Raw pasted text and receipt images are never persisted; receipt links are parsed for identity without opening them. Tests use artificial names, account masks, phone numbers and references. Hide amounts masks text, chart values, chart geometry, accessible labels and monetary edit inputs. An explicitly requested CSV export still contains the filtered financial records. SMS imports add to the current workspace; they do not reset existing demo or edited records.
 
+The app is an installable Progressive Web App (PWA) with full offline caching via a Service Worker (`sw.js`). Static assets, layouts, styles, and cached data load instantly without an active internet connection on iOS Safari and Android Chrome/Edge.
+
 ## Verification
 
 - Production TypeScript/Vite build passes.

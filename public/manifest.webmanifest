@@ -1,1 +1,33 @@
-{"id":"birrx","name":"BirrX","short_name":"BirrX","start_url":"/","display":"standalone","background_color":"#f7f8f2","theme_color":"#174836","icons":[{"src":"/birrx.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
+{
+  "id": "/",
+  "name": "BirrX — Ethiopian Personal Finance",
+  "short_name": "BirrX",
+  "description": "Privacy-first, offline Ethiopian personal finance and cash flow manager.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f8f2",
+  "theme_color": "#174836",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/birrx.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
