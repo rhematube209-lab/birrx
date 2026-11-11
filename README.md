@@ -48,14 +48,21 @@ Imports preview valid, invalid and duplicate rows. Duplicate identity is normali
 DEMO | Telebirr | Debit | 125.00 | Blue taxi | 2026-11-11 | DEMO-551
 ```
 
-Unrecognized messages can be reviewed manually. Only date/status metadata is retained. Raw pasted text and receipt images are never persisted. Hide amounts masks text, chart values, chart geometry, accessible labels and monetary edit inputs. An explicitly requested CSV export still contains the filtered financial records.
+Paste SMS now also recognizes the supplied CBE, BOA and Telebirr message structures. Select the actual sender (CBE, BOA, 127, 994, 251994, 810 or telebirr). Unknown structures remain in review; accepting a sender does not imply every message format from that sender is supported. Paste one sender's messages at a time. Multiple `Dear …` messages are split into individual previews. Supply the original SMS receipt date/time when the body has no date. No date is inferred from a reference, URL or expiry date. Native scanner callers can supply an ISO `receivedAt` timestamp with timezone; it is converted to EAT.
+
+CBE and Telebirr principal amounts and separately stated charges create separate records. CBE totals are checked against principal + service charge + VAT + Disaster Recovery. BOA's maintenance debit already includes taxes; repeated generic and descriptive alerts with the same receipt reference become one enriched record. CBE receipt tokens preserve case. Reported bank balances only advance to newer known timestamps. Each bank currently maps to one owned account mask; another owned mask is held for review rather than combined silently.
+
+994/251994 activations, 75% usage, exhaustion and expiry notices update structured packages without adding expenses. The 127 payment is the expense. Voice night bonuses remain separate from daytime allowances. Expiry notices do not mark a plan exhausted early. Unmatched or ambiguous package updates require the corresponding activation and original message timestamp. Expired/exhausted SMS packages are not shown as active; SMS packages replace demo packages in the deck. Prepaid recharge notices update a separate airtime snapshot, not bank income or spending.
+
+Unrecognized messages can be reviewed manually. Only date/status metadata is retained. Raw pasted text and receipt images are never persisted; receipt links are parsed for identity without opening them. Tests use artificial names, account masks, phone numbers and references. Hide amounts masks text, chart values, chart geometry, accessible labels and monetary edit inputs. An explicitly requested CSV export still contains the filtered financial records. SMS imports add to the current workspace; they do not reset existing demo or edited records.
 
 ## Verification
 
 - Production TypeScript/Vite build passes.
-- 21 unit tests cover exact santim calculations, initial totals, transfer confirm/undo, retained fees, new imported transfer pairs, ambiguity rejection, account report filtering, balance availability, CSV quoting/validation/deduplication, formula-safe exports and EAT date filtering.
+- Unit tests cover exact santim calculations, reporting, reconciliation, CSV imports and the SMS structures above. SMS cases check separate fees, exact tax sums, repeated BOA alerts, missing dates, latest balance order, account masks, CSV seconds, receipt identity, package lifecycle, prepaid airtime and absence of raw message text in stored state. Run `npm test` for the current count.
 - Browser persistence suite: while the dev server runs, open `/qa/persistence.html` and click **Run persistence tests**. Seven tests use an isolated temporary IndexedDB database to verify seeding, edits, deletions, notes, preferences, monthly limits and reconciliation persistence.
 - Browser checks covered tabs, detail editing, remembered category rule, note reload, import repeat detection, transfer confirm/undo, consistent October reporting, goal contributions, hidden amounts, Ethiopian date display, browser Back, package cycling and dragging the deck to Accounts.
+- SMS browser checks used a separate local test origin with artificial messages: Telebirr save/rescan after reload, BOA date validation and duplicate fee enrichment, a package activation with no new spending, and hidden amounts including the raw-text editor. SMS preview fit 360, 390 and 430 pixel widths without horizontal overflow.
 - People filters were checked at 360, 390 and 430 CSS pixels. The bottom navigation has safe-area clearance. The Overview deck is the only horizontal scroller.
 - The reference HTML was inspected as source. A browser security policy blocked its local-file URL, so the requested interactive reference walkthrough could not be performed.
 
