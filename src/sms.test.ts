@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {fresh,totals,exportCSV,preview} from './domain';
+import {fresh,totals,exportCSV,preview,transferPairs,reconcilePair} from './domain';
 import {activePackages,commitSms,normalizeSms,parseSms,previewSms,previewSmsText,splitSms,type SmsEnvelope} from './sms';
 
 // Artificial identities and phone numbers only; message grammar and monetary cases mirror supplied formats.
@@ -13,6 +13,15 @@ const empty=()=>({...fresh(),tx:[],accounts:[],packages:[]});
 const bankEnvelope=(body:string):SmsEnvelope=>({sender:'BOA',body,date:'2026-11-11',time:'12:00:00'});
 
 describe('real SMS financial grammar',()=>{
+ it('imports a bank deposit and loan payments, keeps fees, and reconciles different provider references',()=>{
+  const messages=[
+   {sender:'CBE',date:'2026-11-07',body:'A debit transaction of ETB 3,000.00 has occurred on your account 1****6418. Service charge of ETB 10.00 and VAT(15%) of ETB 1.50 and Disaster Recovery(5%) of 0.50 with total of ETB 3,012.00. Your current balance is ETB 7,050.59. Thanks for Banking with CBE. https://mbreciept.cbe.com.et/v2-TestDeposit'},
+   {sender:'127',body:'Dear Example, You have received ETB 3,000.00 by transaction number TESTDEPOSIT on 2026-11-07 09:59:20 from Commercial Bank of Ethiopia to your telebirr Account 251900000000 - Example. Your current balance is ETB 3,000.00. Thank you for using telebirr Ethio telecom'},
+   {sender:'127',body:'Dear Example You have successfully paid a credit amount of ETB 611.99 on 2026-11-07 09:59:21. Your current outstanding credit amount ETB 0.00 Thank you for using telebirr Ethio telecom'},
+   {sender:'127',date:'2026-11-07',time:'09:59:22',body:'Dear Example You have repaid 1,396.20 ETB, for your telebirr rmelaservice for weekly contract. Your current unpaid credit amount is 0.00 ETB. Thank you for using telebirr Ethio telecom'},
+   {sender:'127',date:'2026-11-07',body:'Dear Example Your outstanding telebirr rmelaservice for weekly credit balance of ETB 1396.20 is 3 days overdue. Please pay promptly. Thank you for using telebirr'}
+  ];const initial=empty(),previews=previewSms(messages,initial);expect(previews.every(p=>p.status==='Ready')).toBe(true);const s=commitSms(initial,previews);expect(s.tx).toHaveLength(5);expect(s.accounts.find(a=>a.bank==='Telebirr')?.bal).toBe(300000);expect(s.tx.filter(r=>r.cat==='Loan repayment').map(r=>r.amt).sort()).toEqual([-139620,-61199]);const pairs=transferPairs(s);expect(pairs).toHaveLength(1);const confirmed=reconcilePair(s,pairs[0].key,'confirmed');expect(totals(confirmed.tx)).toMatchObject({inc:0,exp:202019,net:-202019});expect(totals(reconcilePair(confirmed,pairs[0].key,'pending').tx)).toEqual(totals(s.tx));expect(commitSms(s,previewSms(messages,s)).tx).toHaveLength(5);
+ });
  it.each(['127','telebirr','810'])('parses Telebirr principal and separate VAT-inclusive fee from %s',sender=>{const p=parseSms({sender,body:tele()});expect(p.records.map(r=>r.amt)).toEqual([-2000,-100]);expect(p.records[0].person).toBe('Example Recipient');expect(p.records[1].sms?.feeParts).toEqual({service:87,vat:13,disaster:0});expect(p.balance).toBe(48281);expect([p.date,p.time]).toEqual(['2026-11-11','12:19:40']);expect(totals(p.records).exp).toBe(2100);});
  it.each(['15.00','80.00','100.00'])('parses other transferred amounts %s without merging fees into principal',amount=>{expect(parseSms({sender:'127',body:tele(amount)}).records[1].amt).toBe(-100);});
  it('records package purchase once, without assuming an activation or extra fee',()=>{const p=parseSms({sender:'127',body:'Dear Example You have paid ETB 10.00 for package Daily Internet Package 240 MB purchase made for 0900000000 on 11/11/2026 12:05:39. Your transaction number is TESTPKG01. Your current balance is ETB 519.81. Thank you for using telebirr Ethio telecom'});expect(p.records.map(r=>r.amt)).toEqual([-1000]);expect(p.records[0].cat).toBe('Utilities');expect(p.package).toBeUndefined();expect(p.balance).toBe(51981);});

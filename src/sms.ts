@@ -78,14 +78,23 @@ export function parseSms(e:SmsEnvelope):ParsedSms{
    return {provider,identity:`package|${planKey(pkg.name)}|${pkg.end||''}|${when.at}|${pkg.usedPercent??''}|${pkg.status||'notice'}`,at:when.at,date:when.date,time:when.time,records:[],package:pkg};
   }
   if(!/Thank you for using telebirr/i.test(body))throw Error('Telebirr financial message signature is missing.');
+  const deposit=body.match(new RegExp('You have received\\s+ETB\\s*'+amount+'\\s+by transaction number\\s+([A-Za-z0-9-]+)\\s+on\\s+(.+?)\\s+from Commercial Bank of Ethiopia to your telebirr Account','i'));
+  const creditPaid=body.match(new RegExp('successfully paid a credit amount of\\s+ETB\\s*'+amount+'\\s+on\\s+([^.]*)','i'));
+  const repaid=body.match(new RegExp('You have repaid\\s+'+amount+'\\s+ETB,?\\s+for your telebirr','i'));
+  if(/Your outstanding telebirr.+overdue/i.test(body)){
+   if(!when)throw Error('Credit reminder requires its SMS receipt date.');
+   return {provider,identity:'credit-reminder|'+when.at,at:when.at,date:when.date,time:when.time,records:[],issue:'Credit reminder recorded; no payment posted.'};
+  }
   const airtime=body.match(new RegExp('You have received ETB\\s*'+amount+'\\s+airtime from\\s+[+\\d*]+\\s+on\\s+(.+?)\\. Your transaction','i'));
   const sent=body.match(new RegExp('You have transferred ETB\\s*'+amount+'\\s+to\\s+(.+?)\\s*\\([+\\d*]+\\)\\s+on\\s+(.+?)\\. Your transaction','i'));
   const paid=body.match(new RegExp('You have paid ETB\\s*'+amount+'\\s+for package\\s+(.+?)\\s+purchase made for\\s+[\\d*]+\\s+on\\s+(.+?)\\. Your transaction','i'));
-  if(airtime){principal=-money(airtime[1]);name='Airtime purchase';category='Utilities';when=dmy(airtime[2]);}
+  if(deposit){principal=money(deposit[1]);ref=deposit[2];name='Transfer from CBE';when=noticeDate(deposit[3]);}
+  else if(creditPaid||repaid){const m=creditPaid||repaid!;principal=-money(m[1]);name=creditPaid?'Telebirr credit repayment':'Telebirr weekly loan repayment';category='Loan repayment';if(creditPaid)when=noticeDate(creditPaid[2]);if(!when)throw Error('Loan repayment requires its SMS receipt date.');ref='LOAN-'+(creditPaid?'CREDIT':'WEEKLY')+'-'+when.at+'-'+Math.abs(principal);}
+  else if(airtime){principal=-money(airtime[1]);name='Airtime purchase';category='Utilities';when=dmy(airtime[2]);}
   else if(sent){principal=-money(sent[1]);person=sent[2].trim();name='Transfer to '+person;when=dmy(sent[3]);}
   else if(paid){principal=-money(paid[1]);name=paid[2].trim();category='Utilities';when=dmy(paid[3]);}
   else throw Error('Telebirr financial format needs review.');
-  ref=body.match(/Your transaction number is\s+([A-Za-z0-9-]+)/i)?.[1]||'';
+  ref=ref||body.match(/Your transaction number is\s+([A-Za-z0-9-]+)/i)?.[1]||'';
   feeParts.service=findMoney(body,'The service fee is\\s+ETB')||0;feeParts.vat=findMoney(body,'VAT on the service fee is ETB')||0;
   balance=findMoney(body,'Your current(?: E-Money Account)?\\s+balance is ETB');
  }

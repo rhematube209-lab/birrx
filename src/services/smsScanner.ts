@@ -14,6 +14,7 @@ export const isSupportedSender = (sender: string): boolean => {
 
 export const OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours safe overlap window
 export const BATCH_SIZE = 50;
+export const SMS_PARSER_VERSION = '2';
 
 export interface ScanProgress {
   stage: 'idle' | 'scanning' | 'processing' | 'done' | 'stopped' | 'error';
@@ -80,7 +81,7 @@ async function scanInbox(
   const lastCheckpoint = Number(currentState.prefs?.lastSmsScanTimestamp || 0);
 
   // Apply safe overlap window on incremental scans
-  const sinceTimestamp = lastCheckpoint > 0 ? Math.max(0, lastCheckpoint - OVERLAP_WINDOW_MS) : 0;
+  const sinceTimestamp = currentState.prefs.smsParserVersion === SMS_PARSER_VERSION && lastCheckpoint > 0 ? Math.max(0, lastCheckpoint - OVERLAP_WINDOW_MS) : 0;
 
   let offset = 0;
   let hasMore = true;
@@ -188,7 +189,8 @@ async function scanInbox(
         events.add(id);
         reviews.push({id, date:eatDate(new Date(msg.timestamp).toISOString())});
       });
-      currentState = {...currentState, unmatched:reviews, smsEvents:[...events]};
+      const resolved=new Set(previews.filter(p=>p.status!=='Needs review').map(p=>{const msg=filteredMessages[p.message-1];return 'review:'+normalizeSender(msg.sender)+':'+msg.id;}));
+      currentState = {...currentState, unmatched:reviews.filter(r=>!resolved.has(r.id)), smsEvents:[...events]};
       options.onBatch?.(currentState);
 
       // Raw message bodies from 'envelopes' and 'batch.messages' go out of scope here and are garbage collected.
@@ -218,6 +220,7 @@ async function scanInbox(
       lastSmsScanIso: nowIso,
       lastSmsScanCount: String(totalScanned),
       lastSmsScanStatus: stoppedEarly ? 'incomplete' : 'complete'
+      ,smsParserVersion: stoppedEarly ? currentState.prefs.smsParserVersion || '' : SMS_PARSER_VERSION
     }
   };
 

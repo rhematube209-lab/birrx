@@ -38,6 +38,11 @@ export function transferPairs(s:State):TransferPair[]{
  const groups=new Map<string,Tx[]>();
  for(const r of s.tx){if(!r.ref.trim()||!r.amt)continue;const k=r.ref.trim().toUpperCase()+'|'+r.date+'|'+Math.abs(r.amt);groups.set(k,[...(groups.get(k)||[]),r]);}
  const pairs:TransferPair[]=[];
+ for(const incoming of s.tx.filter(r=>r.bank==='Telebirr'&&r.amt>0&&r.name==='Transfer from CBE'&&r.sms)){
+  const candidates=s.tx.filter(r=>r.bank==='CBE'&&r.amt===-incoming.amt&&r.date===incoming.date&&r.sms?.role==='principal');
+  const credits=s.tx.filter(r=>r.bank==='Telebirr'&&r.amt===incoming.amt&&r.date===incoming.date&&r.name==='Transfer from CBE');
+  if(candidates.length===1&&credits.length===1&&candidates[0].ref.toUpperCase()!==incoming.ref.toUpperCase())groups.set('bank-transfer|'+incoming.id,[candidates[0],incoming]);
+ }
  for(const legs of groups.values()){
   // Ambiguous statements never produce an automatic proposed pair.
   if(legs.length!==2||legs[0].bank===legs[1].bank||legs[0].amt+legs[1].amt!==0)continue;
