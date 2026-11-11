@@ -1,12 +1,15 @@
-const CACHE_NAME = 'birrx-pwa-v1';
+const CACHE_NAME = 'birrx-pwa-v2';
 
 const STATIC_PRECACHE = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/birrx.svg',
+  '/favicon.png',
+  '/app-icon.png',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-maskable-192.png',
+  '/icon-maskable-512.png',
   '/apple-touch-icon.png'
 ];
 
