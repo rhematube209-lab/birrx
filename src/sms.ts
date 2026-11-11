@@ -78,9 +78,11 @@ export function parseSms(e:SmsEnvelope):ParsedSms{
    return {provider,identity:`package|${planKey(pkg.name)}|${pkg.end||''}|${when.at}|${pkg.usedPercent??''}|${pkg.status||'notice'}`,at:when.at,date:when.date,time:when.time,records:[],package:pkg};
   }
   if(!/Thank you for using telebirr/i.test(body))throw Error('Telebirr financial message signature is missing.');
+  const airtime=body.match(new RegExp('You have received ETB\\s*'+amount+'\\s+airtime from\\s+[+\\d*]+\\s+on\\s+(.+?)\\. Your transaction','i'));
   const sent=body.match(new RegExp('You have transferred ETB\\s*'+amount+'\\s+to\\s+(.+?)\\s*\\([+\\d*]+\\)\\s+on\\s+(.+?)\\. Your transaction','i'));
   const paid=body.match(new RegExp('You have paid ETB\\s*'+amount+'\\s+for package\\s+(.+?)\\s+purchase made for\\s+[\\d*]+\\s+on\\s+(.+?)\\. Your transaction','i'));
-  if(sent){principal=-money(sent[1]);person=sent[2].trim();name='Transfer to '+person;when=dmy(sent[3]);}
+  if(airtime){principal=-money(airtime[1]);name='Airtime purchase';category='Utilities';when=dmy(airtime[2]);}
+  else if(sent){principal=-money(sent[1]);person=sent[2].trim();name='Transfer to '+person;when=dmy(sent[3]);}
   else if(paid){principal=-money(paid[1]);name=paid[2].trim();category='Utilities';when=dmy(paid[3]);}
   else throw Error('Telebirr financial format needs review.');
   ref=body.match(/Your transaction number is\s+([A-Za-z0-9-]+)/i)?.[1]||'';

@@ -46,6 +46,12 @@ public class SmsScannerPlugin extends Plugin {
         super.handleOnDestroy();
     }
 
+    @Override
+    protected void handleOnResume() {
+        super.handleOnResume();
+        notifyListeners("appResumed", new JSObject());
+    }
+
     public static boolean isSupportedSender(String sender) {
         if (sender == null) return false;
         String normalized = sender.trim().replace("+", "").replaceAll("\\s+", "").toUpperCase();

@@ -30,6 +30,7 @@ interface SmsScannerPluginNative {
     eventName: 'smsReceived',
     listenerFunc: (message: { sender: string; body: string; timestamp: number }) => void
   ): Promise<{ remove: () => Promise<void> }>;
+  addListener(eventName: 'appResumed', listenerFunc: () => void): Promise<{ remove: () => Promise<void> }>;
 }
 
 const SmsScannerNative = registerPlugin<SmsScannerPluginNative>('SmsScanner');
@@ -84,6 +85,20 @@ export const subscribeToIncomingSms = (
     else handle = h;
   }).catch(() => {});
 
+  return () => {
+    disposed = true;
+    void handle?.remove();
+  };
+};
+
+export const subscribeToAppResume = (callback: () => void): (() => void) => {
+  if (!isAndroidNative()) return () => {};
+  let disposed = false;
+  let handle: { remove: () => Promise<void> } | null = null;
+  SmsScannerNative.addListener('appResumed', () => callback()).then((h) => {
+    if (disposed) void h.remove();
+    else handle = h;
+  }).catch(() => {});
   return () => {
     disposed = true;
     void handle?.remove();

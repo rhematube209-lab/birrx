@@ -62,7 +62,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
       });
 
       setSummary(result.summary);
-      onNotice?.(`${result.summary.stoppedEarly ? 'Scan incomplete' : 'Scan complete'}: ${result.summary.newTransactions} new transactions imported.`);
+      onNotice?.(`${result.summary.stoppedEarly ? 'Scan incomplete' : 'Scan complete'}: ${result.summary.newTransactions} new transactions, ${result.summary.airtimeUpdates} airtime balance updates, ${result.summary.needsReviewCount} messages needing review.`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -165,8 +165,10 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
               <p>
                 <strong>{summary.newTransactions}</strong> new transactions,{' '}
                 <strong>{summary.updatedPackages}</strong> package updates,{' '}
+                <strong>{summary.airtimeUpdates}</strong> airtime balance updates,{' '}
                 <strong>{summary.duplicatesSkipped}</strong> duplicates skipped.
               </p>
+              {summary.needsReviewCount > 0 && <p className="out">{summary.needsReviewCount} messages need review. Open Review to see the dates and import unsupported message formats manually.</p>}
               {summary.stoppedEarly && <small className="out">Scan was stopped early by user.</small>}
             </div>
           )}

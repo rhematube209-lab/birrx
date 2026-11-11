@@ -29,6 +29,7 @@ export interface ScanSummary {
   scannedCount: number;
   newTransactions: number;
   updatedPackages: number;
+  airtimeUpdates: number;
   duplicatesSkipped: number;
   needsReviewCount: number;
   latestTimestamp: number;
@@ -93,6 +94,7 @@ async function scanInbox(
 
   let newTransactions = 0;
   let packageUpdates = 0;
+  let airtimeUpdates = 0;
 
   while (hasMore && totalScanned < maxMessages) {
     if (signal?.aborted) {
@@ -171,9 +173,11 @@ async function scanInbox(
       // 4. Commit recognized domain models to current state
       const beforeTxCount = currentState.tx.length;
       const beforePackages = JSON.stringify(currentState.packages);
+      const beforeAirtime = JSON.stringify(currentState.airtime);
       currentState = commitSms(currentState, previews);
       newTransactions += currentState.tx.length - beforeTxCount;
       if (JSON.stringify(currentState.packages) !== beforePackages) packageUpdates++;
+      if (JSON.stringify(currentState.airtime) !== beforeAirtime) airtimeUpdates++;
       const reviews = [...currentState.unmatched];
       const events = new Set(currentState.smsEvents || []);
       previews.forEach((p) => {
@@ -223,6 +227,7 @@ async function scanInbox(
     scannedCount: totalScanned,
     newTransactions,
     updatedPackages: packageUpdates,
+    airtimeUpdates,
     duplicatesSkipped: totalDuplicates,
     needsReviewCount: totalReviews,
     latestTimestamp: highestTimestamp,
