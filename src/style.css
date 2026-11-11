@@ -60,7 +60,10 @@
 
 .settingsaction{position:relative}.settingsaction.installavailable::after{content:'';position:absolute;right:7px;top:7px;width:8px;height:8px;border-radius:50%;background:#c63d34;border:2px solid #f7f8f2}
 
-.calendar .caltools>.seg{flex:1;min-width:0}
-.calendar .seg button{flex:1;padding-inline:10px}
-.calendar .reportaccount{flex-basis:88px;width:88px;padding-left:8px;padding-right:18px;font-size:11px}
-@media(max-width:430px){.calendar .caltools{flex-wrap:wrap}.calendar .caltools>.seg{flex:1 0 100%;width:100%}.calendar .reportcontrols{width:100%;margin-left:0}.calendar .reportcontrols .datechip{flex:1;justify-content:center;margin-left:0}}
+.calendar .caltools{flex-wrap:nowrap;gap:4px}
+.calendar .caltools>.seg{flex:1 1 auto;min-width:0}
+.calendar .seg button{flex:1;min-width:0;padding-inline:2px;font-size:10px;white-space:nowrap}
+.calendar .reportcontrols{flex:0 0 auto;gap:3px}
+.calendar .datechip{flex:0 1 auto;min-width:0;padding:5px 4px;font-size:9px;gap:3px}
+.calendar .reportaccount{flex:0 0 72px;width:72px;height:44px;min-height:44px;padding:8px 14px 8px 5px;font-size:10px}
+.reportcharts{margin-top:15px}
