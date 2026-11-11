@@ -20,7 +20,7 @@ export default function App(){
   const [storageReady,setStorageReady]=useState(false);
   const [state,setState]=useState<State|null>(null),[error,setError]=useState('');
   const [tab,setTab]=useState(location.hash.slice(1)||'Overview'),[sheet,setSheet]=useState<Sheet|null>(null);
-  const [plan,setPlan]=useState('Plan'),[notice,setNotice]=useState(''),[formError,setFormError]=useState('');
+  const [plan,setPlan]=useState('Plan'),[notice,setNotice]=useState(''),[formError,setFormError]=useState(''),[reviewFilter,setReviewFilter]=useState('All');
   const [query,setQuery]=useState(''),[account,setAccount]=useState('All'),[direction,setDirection]=useState('All');
   const [personQuery,setPersonQuery]=useState(''),[personAccount,setPersonAccount]=useState('All'),[personDir,setPersonDir]=useState('All tran');
   const [method,setMethod]=useState(isAndroidNative()?'Auto SMS':'Sample'),[raw,setRaw]=useState(sampleCsv),[draft,setDraft]=useState<Preview[]>([]),[receipt,setReceipt]=useState<string|null>(null);
@@ -154,7 +154,128 @@ export default function App(){
   const calendar=()=><CalendarReport s={{...s,period:transactionPeriod}} rows={reportRows} t={reportTotals} money={money} fmt={fmt} hidden={hidden} date={date} open={next=>open(next.kind==='calendar'?{...next,id:'transactions'}:next)} changePeriod={changeTransactionPeriod} account={account} accountOptions={accountOptions} changeAccount={setAccount}/>;
   function formSheet(kind:string,title:string,id?:string){open({kind,title,id});}
   function field(label:string,name:string,type='text',value?:string|number,required=true){return <label>{label}<input required={required} name={name} type={hidden&&['amount','target','saved'].includes(name)?'password':type} inputMode={['amount','target','saved'].includes(name)?'decimal':undefined} defaultValue={value}/></label>;}
-  function reviewScreen(){const pairs=transferPairs(s);return <><h1>Review inbox</h1>{pairs.length?pairs.map(pair=>{const [outgoing,incoming]=pair.legs;return <section className="card" key={pair.key}><h2>{pair.decision==='pending'?'Possible own transfer':'Own-transfer decision'}</h2><p>{outgoing.bank} → {incoming.bank} · {date(outgoing.date)} · {outgoing.ref}</p>{activity(pair.legs)}<p>{pair.decision==='confirmed'?'Confirmed. Both legs are excluded from income and spending.':pair.decision==='separate'?'Kept separate. Original classifications remain.':<>Confirming reduces income and spending by {money(incoming.amt)} each. Net cash flow stays the same. Any separately charged fee remains spending.</>}</p><div className="actions">{pair.decision==='pending'?<><button className="primary" onClick={()=>update(s=>reconcilePair(s,pair.key,'confirmed'))}>Confirm own transfer</button><button onClick={()=>update(s=>reconcilePair(s,pair.key,'separate'))}>Keep separate</button></>:<button onClick={()=>update(s=>reconcilePair(s,pair.key,'pending'))}>Undo decision</button>}</div></section>;}):<section className="card"><p>No unique transfer pairs to review.</p></section>}<section className="card"><h2>Flagged records</h2>{activity(s.tx.filter(r=>r.flag))}</section><section className="card"><h2>Unmatched messages</h2><p>Only review metadata is stored. Original message text is discarded.</p>{s.unmatched.length?s.unmatched.map(u=><div className="row" key={u.id}><span>{date(u.date)}</span><button onClick={()=>{unmatchedId.current=u.id;setMethod('Manual');go('Import');}}>Review manually</button><button onClick={()=>update(s=>({...s,unmatched:s.unmatched.filter(x=>x.id!==u.id)}))}>Dismiss</button></div>):<p className="empty">No unmatched messages.</p>}</section></>;}
+  function reviewScreen(){
+    const pairs=transferPairs(s);
+    const unmatchedItems=s.unmatched;
+    const nonFinancialCount=unmatchedItems.filter(u=>['security','promo','service'].includes(u.category||'')).length;
+    const catMap:Record<string,string>={
+      All:'All',
+      action_required:'Action required',
+      security:'OTPs',
+      promo:'Promotions',
+      unsupported:'Unsupported banks',
+      service:'Service notices'
+    };
+    const counts:Record<string,number>={
+      All:unmatchedItems.length,
+      action_required:unmatchedItems.filter(u=>(u.category||'action_required')==='action_required').length,
+      security:unmatchedItems.filter(u=>u.category==='security').length,
+      promo:unmatchedItems.filter(u=>u.category==='promo').length,
+      unsupported:unmatchedItems.filter(u=>u.category==='unsupported').length,
+      service:unmatchedItems.filter(u=>u.category==='service').length
+    };
+    const activeTabs=Object.keys(catMap).filter(k=>k==='All'||counts[k]>0);
+    const effectiveFilter=activeTabs.includes(reviewFilter)?reviewFilter:'All';
+    const filteredUnmatched=effectiveFilter==='All'?unmatchedItems:unmatchedItems.filter(u=>(u.category||'action_required')===effectiveFilter);
+
+    const dismissGroup=(cat:string)=>{
+      update(s=>({...s,unmatched:s.unmatched.filter(u=>(u.category||'action_required')!==cat)}));
+      setNotice('Dismissed '+catMap[cat]+' messages.');
+    };
+    const dismissNonFinancial=()=>{
+      update(s=>({...s,unmatched:s.unmatched.filter(u=>!['security','promo','service'].includes(u.category||''))}));
+      setNotice(`Dismissed ${nonFinancialCount} non-financial messages.`);
+    };
+    const dismissAllInView=()=>{
+      if(effectiveFilter==='All'){
+        update(s=>({...s,unmatched:[]}));
+        setNotice('Dismissed all unmatched messages.');
+      }else{
+        dismissGroup(effectiveFilter);
+      }
+    };
+
+    return <>
+      <h1>Review inbox</h1>
+      {pairs.length?pairs.map(pair=>{
+        const [outgoing,incoming]=pair.legs;
+        return <section className="card" key={pair.key}>
+          <h2>{pair.decision==='pending'?'Possible own transfer':'Own-transfer decision'}</h2>
+          <p>{outgoing.bank} → {incoming.bank} · {date(outgoing.date)} · {outgoing.ref}</p>
+          {activity(pair.legs)}
+          <p>{pair.decision==='confirmed'?'Confirmed. Both legs are excluded from income and spending.':pair.decision==='separate'?'Kept separate. Original classifications remain.':<>Confirming reduces income and spending by {money(incoming.amt)} each. Net cash flow stays the same. Any separately charged fee remains spending.</>}</p>
+          <div className="actions">
+            {pair.decision==='pending'?<><button className="primary" onClick={()=>update(s=>reconcilePair(s,pair.key,'confirmed'))}>Confirm own transfer</button><button onClick={()=>update(s=>reconcilePair(s,pair.key,'separate'))}>Keep separate</button></>:<button onClick={()=>update(s=>reconcilePair(s,pair.key,'pending'))}>Undo decision</button>}
+          </div>
+        </section>;
+      }):<section className="card"><p>No unique transfer pairs to review.</p></section>}
+      <section className="card">
+        <h2>Flagged records</h2>
+        {activity(s.tx.filter(r=>r.flag))}
+      </section>
+      <section className="card">
+        <div className="line">
+          <h2>Unmatched messages</h2>
+          <span className="chip">{unmatchedItems.length} in review</span>
+        </div>
+        <p>Only review metadata is stored. Original message text was immediately discarded.</p>
+        {unmatchedItems.length>0&&(
+          <>
+            {nonFinancialCount>0&&(
+              <div className="actions" style={{marginBottom:10}}>
+                <button className="primary" onClick={dismissNonFinancial}>
+                  Dismiss {nonFinancialCount} safe non-financial (OTPs & Promos)
+                </button>
+              </div>
+            )}
+            <div className="review-filter-tabs">
+              {activeTabs.map(k=>(
+                <button
+                  key={k}
+                  className={effectiveFilter===k?'active':''}
+                  onClick={()=>setReviewFilter(k)}
+                >
+                  {catMap[k]} ({counts[k]})
+                </button>
+              ))}
+            </div>
+            <div className="line" style={{marginBottom:8}}>
+              <small>Showing {filteredUnmatched.length} {catMap[effectiveFilter].toLowerCase()} messages</small>
+              <button className="link" onClick={dismissAllInView}>
+                Dismiss all {effectiveFilter==='All'?'messages':catMap[effectiveFilter].toLowerCase()}
+              </button>
+            </div>
+          </>
+        )}
+        {filteredUnmatched.length?filteredUnmatched.map(u=>(
+          <div className="review-card" key={u.id}>
+            <div className="line">
+              <div className="review-sender-badge">
+                <b>{u.provider||u.sender||'SMS'}</b>
+                <small>{date(u.date)}{u.time?' · '+u.time+' EAT':''}</small>
+              </div>
+              <span className={'chip tag-'+(u.category||'action_required')}>
+                {u.reasonLabel||'Needs review'}
+              </span>
+            </div>
+            {u.actionHint&&<p className="review-hint">{u.actionHint}</p>}
+            <div className="actions">
+              {u.category!=='security'&&u.category!=='promo'&&(
+                <button className="primary" onClick={()=>{
+                  unmatchedId.current=u.id;
+                  setMethod('Manual');
+                  go('Import');
+                }}>Review manually</button>
+              )}
+              <button onClick={()=>update(s=>({...s,unmatched:s.unmatched.filter(x=>x.id!==u.id)}))}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )):<p className="empty">No unmatched messages in this view.</p>}
+      </section>
+    </>;
+  }
   function importScreen(){
     const importMethods=isAndroidNative()?['Auto SMS','Sample','CSV','Paste SMS','Manual']:['Sample','CSV','Paste SMS','Manual'];
     function prepare(e:FormEvent<HTMLFormElement>){e.preventDefault();try{let text=method==='Sample'?sampleCsv:raw;if(method==='Manual'){const f=Object.fromEntries(new FormData(e.currentTarget)) as Record<string,string>;const keys=['date','time','bank','merchant','direction','amount','reference','person'];text=keys.join(',')+'\n'+keys.map(k=>'"'+(f[k]||'').replaceAll('"','""')+'"').join(',');}setDraft(preview(text,method==='Paste SMS'?method:'CSV',s));setFormError('');}catch(e){setFormError((e as Error).message);}}

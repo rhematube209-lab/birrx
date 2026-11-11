@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {fresh,totals,exportCSV,preview,transferPairs,reconcilePair} from './domain';
-import {activePackages,commitSms,normalizeSms,parseSms,previewSms,previewSmsText,splitSms,type SmsEnvelope} from './sms';
+import {classifySmsReview,activePackages,commitSms,normalizeSms,parseSms,previewSms,previewSmsText,splitSms,type SmsEnvelope} from './sms';
 
 // Artificial identities and phone numbers only; message grammar and monetary cases mirror supplied formats.
 const boa=(amount='3.01',reference='TESTBOA01',fee=false)=>`Dear Example, your account &#x31;****25 was debited with ETB ${amount}${fee?' for the Mobile Banking Monthly Maintenance Fee, including 15% VAT and 5% Disaster Fund':''}. Available Balance: ETB 72.19. Receipt: https://cs.bankofabyssinia.com/slip/?trx=${reference} Feedback: https://cs.bankofabyssinia.com/cs/?trx=DO-NOT-USE For help, call 8397. Bank of Abyssinia.`;
@@ -53,4 +53,115 @@ describe('package and airtime notices',()=>{
  it('parses combined data and SMS allowances and does not revive expired packages',()=>{const body='Dear customer Your Weekly Holiday 2423MB and 23SMS from telebirr to be expired after 7days will be expired on 2026-10-08 at 17:34:21. Ethio telecom';const p=parseSms({sender:'251994',body,date:'2026-10-07'});expect(p.package?.size).toBe('2423 MB + 23 SMS');const s=commitSms(empty(),previewSms([{sender:'994',body:activation}],empty()));expect(activePackages(s,'2026-11-13T00:00:00')).toHaveLength(0);});
  it('treats prepaid recharge as an airtime snapshot, not income or spending',()=>{const e={sender:'251994',body:'Dear Customer Your prepaid account has been recharged successfully. Your Recharged balance is 5.00 Birr. Your balance is 5.00 Birr. Ethio telecom',date:'2026-11-11',time:'15:00:00'};const next=commitSms(empty(),previewSms([e,e],empty()));expect(next.airtime?.balance).toBe(500);expect(next.tx).toHaveLength(0);expect(next.accounts).toHaveLength(0);});
  it('routes unsupported senders and unknown financial templates to review',()=>{expect(previewSms([{sender:'Someone',body:tele()}],empty())[0].status).toBe('Needs review');expect(previewSms([{sender:'810',body:'A promotion: recharge now for 100% bonus'}],empty())[0].status).toBe('Needs review');});
+});
+
+
+describe('extended Ethiopian banking formats and review classification', () => {
+  it('parses Telebirr merchant payment with recipient merchant name and zero fee', () => {
+    const body = 'Dear Example You have paid ETB 250.00 to Tomoca Coffee (0911223344) on 11/11/2026 14:15:00. Your transaction number is MCH12345. The service fee is ETB 0.00 and 15% VAT on the service fee is ETB 0.00. Your current E-Money Account balance is ETB 1,250.00. Thank you for using telebirr Ethio telecom';
+    const p = parseSms({ sender: '127', body });
+    expect(p.records).toHaveLength(1);
+    expect(p.records[0].amt).toBe(-25000);
+    expect(p.records[0].person).toBe('Tomoca Coffee');
+    expect(p.records[0].ref).toBe('MCH12345');
+    expect(p.balance).toBe(125000);
+    expect([p.date, p.time]).toEqual(['2026-11-11', '14:15:00']);
+  });
+
+  it('parses Telebirr received P2P payment as income', () => {
+    const body = 'Dear Example, You have received ETB 1,000.00 from Abebe Bikila (251911223344) on 11/11/2026 15:30:00. Your transaction number is REC998877. Your current balance is ETB 2,250.00. Thank you for using telebirr Ethio telecom';
+    const p = parseSms({ sender: '127', body });
+    expect(p.records).toHaveLength(1);
+    expect(p.records[0].amt).toBe(100000);
+    expect(p.records[0].person).toBe('Abebe Bikila');
+    expect(p.records[0].ref).toBe('REC998877');
+    expect(p.records[0].cat).toBe('Income');
+    expect(p.balance).toBe(225000);
+  });
+
+  it('parses Telebirr agent cash in (deposit) and agent cash out (withdrawal)', () => {
+    const depositBody = 'Dear Example, You have deposited ETB 500.00 from agent Tele Agent (251912345678) on 11/11/2026 10:00:00. Your transaction number is AGT5544. Your current balance is ETB 2,750.00. Thank you for using telebirr Ethio telecom';
+    const dep = parseSms({ sender: '127', body: depositBody });
+    expect(dep.records[0].amt).toBe(50000);
+    expect(dep.records[0].cat).toBe('Income');
+    expect(dep.records[0].person).toBe('Tele Agent');
+
+    const withdrawBody = 'Dear Example, You have withdrawn ETB 300.00 from agent Tele Agent (251912345678) on 11/11/2026 11:00:00. Your transaction number is WTH9911. The service fee is ETB 2.61 and 15% VAT on the service fee is ETB 0.39. Your current balance is ETB 2,447.00. Thank you for using telebirr Ethio telecom';
+    const wth = parseSms({ sender: '127', body: withdrawBody });
+    expect(wth.records).toHaveLength(2);
+    expect(wth.records[0].amt).toBe(-30000);
+    expect(wth.records[1].amt).toBe(-300);
+    expect(wth.records[1].cat).toBe('Fees');
+    expect(wth.balance).toBe(244700);
+  });
+
+  it('parses CBE incoming credit alert and ATM debit transaction', () => {
+    const creditBody = 'Dear Example, A credit transaction of ETB 2,500.00 has occurred on your account 1****6418 on 2026-11-11. Your current balance is ETB 9,550.59. Thanks for Banking with CBE. https://mbreciept.cbe.com.et/v2-CreditNotice';
+    const cr = parseSms({ sender: 'CBE', body: creditBody, date: '2026-11-11' });
+    expect(cr.records[0].amt).toBe(250000);
+    expect(cr.records[0].cat).toBe('Income');
+    expect(cr.accountMask).toBe('1***6418');
+    expect(cr.balance).toBe(955059);
+
+    const atmBody = 'Dear Example, An ATM debit transaction of ETB 1,000.00 has occurred on your account 1****6418. Service charge of ETB 0.00 and VAT(15%) of ETB 0.00 with total of ETB 1,000.00. Your current balance is ETB 8,550.59. Thanks for Banking with CBE. https://mbreciept.cbe.com.et/v2-AtmNotice';
+    const atm = parseSms({ sender: 'CBE', body: atmBody, date: '2026-11-11' });
+    expect(atm.records[0].amt).toBe(-100000);
+    expect(atm.records[0].cat).toBe('Other');
+    expect(atm.accountMask).toBe('1***6418');
+    expect(atm.balance).toBe(855059);
+  });
+
+  it('parses BOA messages with "has been debited" wording', () => {
+    const boaAlternate = 'Dear Example, your account 1****25 has been debited with ETB 500.00. Available Balance: ETB 1,200.00. Receipt: https://cs.bankofabyssinia.com/slip/?trx=BOAALT01 Bank of Abyssinia.';
+    const p = parseSms(bankEnvelope(boaAlternate));
+    expect(p.records[0].amt).toBe(-50000);
+    expect(p.records[0].ref).toBe('BOAALT01');
+    expect(p.balance).toBe(120000);
+  });
+
+  it('classifies OTPs, promos, service alerts, and unsupported banks with informative labels without storing body', () => {
+    const otp = classifySmsReview({ sender: '127', body: 'Your telebirr verification code is 492019. Do not share your OTP with anyone.' });
+    expect(otp.category).toBe('security');
+    expect(otp.reason).toBe('otp_security');
+    expect(otp.reasonLabel).toBe('Security Code / OTP');
+
+    const promo = classifySmsReview({ sender: '810', body: 'Recharge now and get 100% bonus airtime! Special holiday package.' });
+    expect(promo.category).toBe('promo');
+    expect(promo.reason).toBe('promotional');
+    expect(promo.reasonLabel).toBe('Promotion / Marketing');
+
+    const service = classifySmsReview({ sender: 'BOA', body: 'Your mobile banking PIN has been updated successfully.' });
+    expect(service.category).toBe('service');
+    expect(service.reason).toBe('service_notice');
+    expect(service.reasonLabel).toBe('Service / Account Notice');
+
+    const awash = classifySmsReview({ sender: 'AWASH', body: 'Dear Customer, your account was credited with ETB 500.00.' });
+    expect(awash.category).toBe('unsupported');
+    expect(awash.reason).toBe('unsupported_sender');
+    expect(awash.reasonLabel).toContain('Awash Bank');
+
+    const cbebirr = classifySmsReview({ sender: '844', body: 'You have paid 150 ETB to merchant.' });
+    expect(cbebirr.category).toBe('unsupported');
+    expect(cbebirr.reason).toBe('unsupported_sender');
+    expect(cbebirr.reasonLabel).toContain('CBE Birr');
+
+    const unknown = classifySmsReview({ sender: 'CBE', body: 'Some unrecognized future CBE alert without transaction structure' });
+    expect(unknown.category).toBe('action_required');
+    expect(unknown.reason).toBe('format_unrecognized');
+  });
+
+  it('attaches review classification in previewSms without storing raw body text', () => {
+    const previews = previewSms([
+      { sender: '127', body: 'Your verification code is 123456' },
+      { sender: 'AWASH', body: 'Dear customer your account was credited' }
+    ], empty());
+
+    expect(previews[0].status).toBe('Needs review');
+    expect(previews[0].classification?.category).toBe('security');
+    expect(previews[0].classification?.reason).toBe('otp_security');
+
+    expect(previews[1].status).toBe('Needs review');
+    expect(previews[1].classification?.category).toBe('unsupported');
+    expect(previews[1].classification?.provider).toBe('Awash Bank');
+  });
 });

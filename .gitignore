@@ -2,5 +2,7 @@ node_modules/
 dist/
 .npm-cache/
 *.tsbuildinfo
+.idea/
+*.iml
 .env*
 !.env.example

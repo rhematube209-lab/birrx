@@ -2,7 +2,11 @@ import { commitSms, previewSms, type SmsEnvelope, type SmsPreview } from '../sms
 import { clearDemoData as clearSeededDemoData, eatDate, type State } from '../domain';
 import { scanNativeInbox, type RawSmsMessage } from './androidSmsBridge';
 
-export const SUPPORTED_SENDERS = new Set(['CBE', 'BOA', '127', '994', '251994', '810', 'TELEBIRR']);
+export const SUPPORTED_SENDERS = new Set([
+  'CBE', 'BOA', '127', '994', '251994', '810', 'TELEBIRR',
+  'AWASH', 'AWASHBANK', 'DASHEN', 'DASHENBANK', 'COOP', 'COOPBANK',
+  'HIBRET', 'NIB', 'WEGAGEN', 'ZEMEN', 'CBEBIRR', '844', 'AMHARA', 'SIINQEE'
+]);
 
 export const normalizeSender = (sender: string): string => {
   return sender.trim().replace(/^\+/, '').replace(/\s+/g, '').toUpperCase();
@@ -14,7 +18,7 @@ export const isSupportedSender = (sender: string): boolean => {
 
 export const OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours safe overlap window
 export const BATCH_SIZE = 50;
-export const SMS_PARSER_VERSION = '2';
+export const SMS_PARSER_VERSION = '3';
 
 export interface ScanProgress {
   stage: 'idle' | 'scanning' | 'processing' | 'done' | 'stopped' | 'error';
@@ -193,7 +197,21 @@ async function scanInbox(
         const id = 'review:' + normalizeSender(msg.sender) + ':' + msg.id;
         if (events.has(id)) return;
         events.add(id);
-        reviews.push({id, date:eatDate(new Date(msg.timestamp).toISOString())});
+        const c = p.classification;
+        reviews.push({
+          id,
+          date: eatDate(new Date(msg.timestamp).toISOString()),
+          time: new Intl.DateTimeFormat('en-GB', {
+            timeZone: 'Africa/Addis_Ababa',
+            hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+          }).format(new Date(msg.timestamp)),
+          sender: normalizeSender(msg.sender),
+          provider: c?.provider || normalizeSender(msg.sender),
+          reason: c?.reason || 'format_unrecognized',
+          reasonLabel: c?.reasonLabel || 'Needs review',
+          actionHint: c?.actionHint || 'Review manually or enter as transaction',
+          category: c?.category || 'action_required'
+        });
       });
       const resolved=new Set(previews.filter(p=>p.status!=='Needs review').map(p=>{const msg=filteredMessages[p.message-1];return 'review:'+normalizeSender(msg.sender)+':'+msg.id;}));
       currentState = {...currentState, unmatched:reviews.filter(r=>!resolved.has(r.id)), smsEvents:[...events]};

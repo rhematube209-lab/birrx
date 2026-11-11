@@ -244,7 +244,7 @@ describe('Scan regressions', () => {
     ];
     const mockFetcher = async () => ({messages,hasMore:false});
     const first = await runInboxScan(emptyState(),{mockFetcher});
-    expect(first.state.unmatched).toEqual([{id:'review:CBE:unknown',date:'2023-11-15'}]);
+    expect(first.state.unmatched).toMatchObject([{id:'review:CBE:unknown',date:'2023-11-15',reason:'format_unrecognized',sender:'CBE',category:'action_required'}]);
     expect(JSON.stringify(first.state)).not.toContain('Private unsupported');
     const second = await runInboxScan(first.state,{mockFetcher});
     expect(second.state.unmatched).toHaveLength(1);
@@ -292,6 +292,92 @@ describe('Scan regressions', () => {
     release(); await first;
     await expect(runInboxScan(emptyState(),{mockFetcher:async ()=>({messages:[],hasMore:false})})).resolves.toBeDefined();
   });
+
+  it('classifies mixed inbox messages (merchant payment, OTP, promo, Awash) without persisting raw text and supports batch dismissal', async () => {
+    const messages = [
+      {
+        id: 'msg_tx',
+        sender: '127',
+        body: 'Dear Example You have paid ETB 150.00 to Cafe ABC (0911000000) on 11/11/2026 14:00:00. Your transaction number is MCH9988. The service fee is ETB 0.00 and 15% VAT on the service fee is ETB 0.00. Your current E-Money Account balance is ETB 1,850.00. Thank you for using telebirr Ethio telecom',
+        timestamp: 1700000010000
+      },
+      {
+        id: 'msg_otp',
+        sender: '127',
+        body: 'Your telebirr verification code is 883921. Do not share your OTP with anyone.',
+        timestamp: 1700000020000
+      },
+      {
+        id: 'msg_promo',
+        sender: '810',
+        body: 'Spin and win! Recharge today to get 100% bonus airtime.',
+        timestamp: 1700000030000
+      },
+      {
+        id: 'msg_awash',
+        sender: 'AWASH',
+        body: 'Dear Customer, your account 0134900000 was credited with ETB 700.00.',
+        timestamp: 1700000040000
+      },
+      {
+        id: 'msg_unrecognized',
+        sender: 'CBE',
+        body: 'Random unparseable notice from CBE',
+        timestamp: 1700000050000
+      }
+    ];
+
+    const result = await runInboxScan(emptyState(), {
+      mockFetcher: async () => ({ messages, hasMore: false })
+    });
+
+    // Valid merchant transaction committed
+    expect(result.state.tx).toHaveLength(1);
+    expect(result.state.tx[0].amt).toBe(-15000);
+    expect(result.state.tx[0].person).toBe('Cafe ABC');
+    expect(result.state.tx[0].ref).toBe('MCH9988');
+
+    // Exactly 4 items routed to review with correct classification
+    expect(result.state.unmatched).toHaveLength(4);
+
+    const otp = result.state.unmatched.find(u => u.category === 'security');
+    expect(otp).toBeDefined();
+    expect(otp?.reason).toBe('otp_security');
+    expect(otp?.reasonLabel).toBe('Security Code / OTP');
+
+    const promo = result.state.unmatched.find(u => u.category === 'promo');
+    expect(promo).toBeDefined();
+    expect(promo?.reason).toBe('promotional');
+    expect(promo?.reasonLabel).toBe('Promotion / Marketing');
+
+    const awash = result.state.unmatched.find(u => u.category === 'unsupported');
+    expect(awash).toBeDefined();
+    expect(awash?.reason).toBe('unsupported_sender');
+    expect(awash?.reasonLabel).toContain('Awash Bank');
+
+    const actionReq = result.state.unmatched.find(u => u.category === 'action_required');
+    expect(actionReq).toBeDefined();
+    expect(actionReq?.reason).toBe('format_unrecognized');
+
+    // Zero raw text or secrets stored anywhere in state
+    const json = JSON.stringify(result.state);
+    expect(json).not.toContain('Your telebirr verification code is');
+    expect(json).not.toContain('Do not share your OTP with anyone');
+    expect(json).not.toContain('883921');
+    expect(json).not.toContain('Spin and win');
+    expect(json).not.toContain('credited with ETB 700.00');
+    expect(json).not.toContain('Random unparseable');
+    expect(json).not.toContain('Cafe ABC (0911000000)');
+
+    // Simulate batch dismissal of safe non-financial notices (security + promo + service)
+    const afterDismissSafe = {
+      ...result.state,
+      unmatched: result.state.unmatched.filter(u => u.category !== 'security' && u.category !== 'promo' && u.category !== 'service')
+    };
+    expect(afterDismissSafe.unmatched).toHaveLength(2); // Only Awash and Unrecognized remain
+    expect(afterDismissSafe.tx).toHaveLength(1); // Transactions intact
+  });
+
 });
 
 
