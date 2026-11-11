@@ -1,0 +1,31 @@
+{
+  "name": "birrx",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "lucide-react": "0.468.0",
+    "idb": "7.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "5.2.0",
+    "typescript": "~5.9.3",
+    "vite": "7.3.6",
+    "tailwindcss": "4.3.0",
+    "@tailwindcss/vite": "4.3.0",
+    "vitest": "4.1.10"
+  },
+  "overrides": {
+    "nanoid": "3.3.18",
+    "rollup": "4.63.3"
+  }
+}
