@@ -20,6 +20,14 @@
 :root[data-theme="dark"] .packagehalf:before{background:repeating-radial-gradient(ellipse at 70% 25%,transparent 0 8px,#b4d69418 9px 10px)}
 :root[data-theme="dark"] .pkgicon{background:#d9ecb4;color:#173d2d}
 :root[data-theme="dark"] .banktags span{border:1px solid #b2d3b54d;background:#dff6c910;color:#dcebd8}
+:root[data-theme="dark"] .accounts{background:linear-gradient(135deg,#111f18,#16251d);border:1px solid #2b3d32;color:#e2ece5}
+:root[data-theme="dark"] .accounts h2{color:#f0f5f1}
+:root[data-theme="dark"] .accounts>.line small,:root[data-theme="dark"] .accounts>small{color:#8fa197}
+:root[data-theme="dark"] .walletitems{background:#0d1713;border:1px solid #293a31;border-radius:10px;overflow:hidden auto}
+:root[data-theme="dark"] .walletrow{background:transparent;border-color:#223229;color:#e2ece5}
+:root[data-theme="dark"] .walletrow:active{background:#182920}
+:root[data-theme="dark"] .banktag{background:#315f48;color:#f0f7e9}
+:root[data-theme="dark"] .walletrow .amount{color:#e7eee9}
 :root[data-theme="dark"] .flowgrid i{border-color:#24332c}
 :root[data-theme="dark"] .donut>span{background:#101c17}
 :root[data-theme="dark"] .row,:root[data-theme="dark"] .activity{border-color:#24332c}
