@@ -1,17 +1,43 @@
 import {describe,it,expect} from 'vitest';
-import {fresh,cents,totals,periodRows,reconcile,reported,preview,commit,sampleCsv,sampleMsg,inPeriod,eatDate,categories,exportCSV,filterAccount,type Tx} from './domain';
+import {fresh,cents,totals,periodRows,reportPeriod,reportPeriodLabel,setReportPeriod,reconcile,reported,preview,commit,sampleCsv,sampleMsg,inPeriod,eatDate,categories,exportCSV,filterAccount,type Tx} from './domain';
+it('labels the actual home reporting scope instead of always showing a month',()=>{
+ const p=fresh().period;
+ expect(reportPeriodLabel({...p,scope:'Year'})).toBe('2026');
+ expect(reportPeriodLabel(p)).toBe('Nov 2026');
+ expect(reportPeriodLabel({...p,scope:'Day'})).toBe('Nov 1, 2026');
+ expect(reportPeriodLabel({...p,scope:'Hour',hour:'13'},'Gregorian','12-hour')).toBe('Nov 1, 2026 · 1 PM');
+ expect(reportPeriodLabel({...p,scope:'Hour',hour:'Unknown'})).toContain('Unknown time');
+});
+it('keeps Transactions calendar independent of Overview across changes and reloads',()=>{
+ const initial=fresh(),homeTotals=totals(periodRows(initial));
+ const transactions=setReportPeriod(initial,'transactions',{scope:'Day',date:'2026-11-02'});
+ expect(totals(periodRows(transactions))).toEqual(homeTotals);
+ expect(totals(periodRows(transactions,'transactions')).inc).toBe(3200000);
+ const home=setReportPeriod(transactions,'overview',{scope:'Month',date:'2026-10-01'});
+ expect(reportPeriod(home,'transactions')).toEqual(reportPeriod(transactions,'transactions'));
+ expect(totals(periodRows(home)).inc).toBe(3100000);
+ const restored=JSON.parse(JSON.stringify(home));
+ expect(periodRows(restored,'transactions')).toEqual(periodRows(transactions,'transactions'));
+ expect(periodRows(restored)).toEqual(periodRows(home));
+});
+it('preserves the previous Transactions period when first changing the header calendar',()=>{
+ const initial=fresh(),changed=setReportPeriod(initial,'overview',{scope:'Year',date:'2025-01-01'});
+ expect(reportPeriod(changed,'transactions')).toEqual(initial.period);
+ expect(periodRows(changed)).toHaveLength(0);
+ expect(periodRows(changed,'transactions')).toEqual(periodRows(initial));
+});
 describe('santim calculations',()=>{
-it('matches approved November acceptance figures',()=>expect(totals(periodRows(fresh()))).toEqual({inc:3990000,exp:1253500,net:2736500}));
+it('matches November figures without the synthetic Awash account',()=>expect(totals(periodRows(fresh()))).toEqual({inc:3450000,exp:1253500,net:2196500}));
 it('uses exact integers and validates decimal input',()=>{expect(cents('0.01')).toBe(1);expect(cents('12.50')).toBe(1250);for(const s of ['0','-1','1.001','1e3','NaN',''])expect(()=>cents(s)).toThrow();});
-it('keeps zero and unavailable balances separate',()=>{const s=fresh();expect(reported(s).balance).toBe(8435000);s.accounts.forEach(a=>a.bal=null);expect(reported(s).balance).toBeNull();s.accounts[0].bal=0;expect(reported(s).balance).toBe(0);});
+it('keeps zero and unavailable balances separate',()=>{const s=fresh();expect(reported(s).balance).toBe(6407500);s.accounts.forEach(a=>a.bal=null);expect(reported(s).balance).toBeNull();s.accounts[0].bal=0;expect(reported(s).balance).toBe(0);});
 });
 describe('transfer reconciliation',()=>{
-it('excludes both legs, retains the fee and is reversible',()=>{const s=fresh(),linked=reconcile(s,'confirmed');expect(totals(periodRows(linked))).toEqual({inc:3740000,exp:1003500,net:2736500});expect(linked.tx.find(r=>r.id==='n9')?.amt).toBe(-250000);expect(linked.tx.find(r=>r.id==='n8')?.transfer).toBeUndefined();expect(categories(periodRows(linked)).find(([c])=>c==='Fees')?.[1]).toBe(500);expect(totals(periodRows(reconcile(linked,'pending')))).toEqual(totals(periodRows(s)));expect(s.tx.some(r=>r.transfer)).toBe(false);});
+it('excludes both legs, retains the fee and is reversible',()=>{const s=fresh(),linked=reconcile(s,'confirmed');expect(totals(periodRows(linked))).toEqual({inc:3200000,exp:1003500,net:2196500});expect(linked.tx.find(r=>r.id==='n9')?.amt).toBe(-250000);expect(linked.tx.find(r=>r.id==='n8')?.transfer).toBeUndefined();expect(categories(periodRows(linked)).find(([c])=>c==='Fees')?.[1]).toBe(500);expect(totals(periodRows(reconcile(linked,'pending')))).toEqual(totals(periodRows(s)));expect(s.tx.some(r=>r.transfer)).toBe(false);});
 it('refuses a missing or mismatched leg',()=>{const s=fresh();s.tx=s.tx.filter(r=>r.id!=='n10');expect(()=>reconcile(s,'confirmed')).toThrow();});
 it('keeps separately reviewed legs in cash flow',()=>expect(totals(periodRows(reconcile(fresh(),'separate')))).toEqual(totals(periodRows(fresh()))));
 });
 describe('import preview and deduplication',()=>{
-it('second import adds no records, including a repeated commit',()=>{const s=fresh(),p=preview(sampleCsv,'CSV',s);expect(p.map(p=>p.status)).toEqual(['Ready','Duplicate']);const next=commit(s,p);expect(next.tx.length).toBe(12);expect(commit(next,preview(sampleCsv,'CSV',next)).tx.length).toBe(12);expect(commit(next,p).tx.length).toBe(12);});
+it('second import adds no records, including a repeated commit',()=>{const s=fresh(),p=preview(sampleCsv,'CSV',s);expect(p.map(p=>p.status)).toEqual(['Ready','Duplicate']);const next=commit(s,p);expect(next.tx.length).toBe(11);expect(commit(next,preview(sampleCsv,'CSV',next)).tx.length).toBe(11);expect(commit(next,p).tx.length).toBe(11);});
 it('recognizes the supported pasted format and normalizes reference case',()=>{const s=fresh();expect(preview(sampleMsg,'Paste SMS',s)[0].status).toBe('Ready');expect(preview(sampleMsg.replace('DEMO-551','n7'),'Paste SMS',s)[0].status).toBe('Duplicate');expect(()=>preview('Some unsupported bank SMS','Paste SMS',s)).toThrow();});
 it('rejects invalid rows without discarding valid ones',()=>{const csv=sampleCsv+'\n2026-02-30,CBE,Bad,Debit,1,R1\n2026-11-11,CBE,Bad,Debit,1.001,R2';const p=preview(csv,'CSV',fresh());expect(p[2].status).toBe('Invalid date');expect(p[3].record).toBeUndefined();});
 it('handles quoted commas, CRLF and in-file duplicates',()=>{const csv='date,bank,merchant,direction,amount,reference\r\n2026-11-11,CBE,"Shop, cafe",Debit,3.10,REF1\r\n2026-11-11,CBE,Shop,Debit,3.10,ref1';const p=preview(csv,'CSV',fresh());expect(p[0].record?.name).toBe('Shop, cafe');expect(p[1].status).toBe('Duplicate');});

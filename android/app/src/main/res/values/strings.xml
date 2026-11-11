@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BirrX</string>
+    <string name="title_activity_main">BirrX</string>
+    <string name="package_name">com.birrx.app</string>
+    <string name="custom_url_scheme">com.birrx.app</string>
+</resources>

@@ -26,13 +26,15 @@ npm exec vite preview -- --host 0.0.0.0
 
 ## Data and behavior
 
-Demo data is seeded once: 11 transactions across October and November 2026; CBE, Telebirr and Awash balances; Data and Voice packages; an emergency-fund goal; and recurring rent. November starts at **39,900 ETB income, 12,535 ETB spending, 27,365 ETB net**. Confirm the TB1042 transfer in the review inbox to get **37,400 / 10,035 / 27,365 ETB**. Undo restores the initial totals. The 5 ETB fee stays spending.
+Demo data is seeded once: 10 transactions across October and November 2026; CBE and Telebirr balances; Data and Voice packages; an emergency-fund goal; and recurring rent. November starts at **34,500 ETB income, 12,535 ETB spending, 21,965 ETB net**. Confirm the TB1042 transfer in the review inbox to get **32,000 / 10,035 / 21,965 ETB**. Undo restores the initial totals. The 5 ETB fee stays spending.
 
 All money uses integer santim. `src/domain.ts` supplies the shared reporting, reconciliation, import and export logic. Dates and optional times represent East Africa Time; missing times stay unknown. The Ethiopian calendar setting changes displayed dates, while Gregorian date-entry controls are explicitly labeled and stored dates remain unchanged. Reporting periods retain their Gregorian boundaries.
 
 The balance is the sum of latest account reports, independent of cash-flow totals. An unavailable report differs from zero. Review/edit balances or add an account under Settings. Balances are reported snapshots, not computed live bank balances. Older reports cannot replace newer ones.
 
-The Transactions calendar has a report account selector beside its date control. It filters the period totals, day counts and account activity together. It includes All, CBE, BOA, Telebirr and Awash; BOA is available for imported or manually added records.
+The Transactions calendar has a report account selector beside its date control. It filters the period totals, day counts and account activity together. It includes All, CBE, BOA and Telebirr; BOA is available for imported or manually added records.
+
+Transactions saves its own reporting period independently of Overview. Its calendar controls the calendar report, activity list and CSV export. The header calendar is hidden on Transactions; elsewhere it controls the Overview/Plan reporting period. Both period selections survive reloads.
 
 Calendar cells show signed income and spending instead of transaction counts: daily totals in Month view, monthly totals in Year view, and hourly totals in Day view. Values are compact on screen, exact in accessible descriptions and report totals, red for spending, and hidden when amounts are hidden. Transactions without a time appear in the Unknown hour bucket.
 
@@ -57,6 +59,70 @@ CBE and Telebirr principal amounts and separately stated charges create separate
 Unrecognized messages can be reviewed manually. Only date/status metadata is retained. Raw pasted text and receipt images are never persisted; receipt links are parsed for identity without opening them. Tests use artificial names, account masks, phone numbers and references. Hide amounts masks text, chart values, chart geometry, accessible labels and monetary edit inputs. An explicitly requested CSV export still contains the filtered financial records. SMS imports add to the current workspace; they do not reset existing demo or edited records.
 
 The app is an installable Progressive Web App (PWA) with full offline caching via a Service Worker (`sw.js`). Static assets, layouts, styles, and cached data load instantly without an active internet connection on iOS Safari and Android Chrome/Edge.
+
+## Android Native Integration & SMS Inbox Scanning
+
+BirrX includes a native Android wrapper using Capacitor and a custom Java plugin (`SmsScannerPlugin`) paired with a broadcast receiver (`SmsBroadcastReceiver`) for automatic local SMS parsing.
+
+### Architecture & Capabilities
+
+1. **Inbox Scanning (`READ_SMS`)**:
+   - Reads directly from `content://sms/inbox` via Android's `ContentResolver`.
+   - Normalizes and filters solely by official banking senders: `CBE`, `BOA`, `127`, `994`, `251994`, `810`, and `TELEBIRR`. Senders are verified from SMS envelope metadata, never inferred from message body text.
+   - Sorted chronologically (`date ASC`) with batch pagination (default 50 messages/batch; scans continue through the complete inbox).
+   - Incremental scanning: stores `lastSmsScanTimestamp` and queries newer messages with a 2-hour safe overlap window to prevent missing messages delivered with delay.
+   - Built-in `AbortSignal` allows stopping or canceling inbox scans at any point.
+
+2. **Incoming SMS Detection (`RECEIVE_SMS`)**:
+   - `SmsBroadcastReceiver` registers for `android.provider.Telephony.SMS_RECEIVED` protected by `android.permission.BROADCAST_SMS`.
+   - Parses PDUs, filters supported banking senders, and pushes incoming messages to the active app session via Capacitor listener. Closed-app background processing is not implemented; reopening the app scans missed inbox messages.
+   - Scans serialize across startup and manual entry, apply each batch to the latest workspace, and persist review metadata without SMS text. Interrupted scans retain the prior checkpoint and safely deduplicate on retry.
+
+3. **Privacy & Data Model Guarantee**:
+   - **Transient Bodies**: Raw SMS message bodies are strictly transient. They are passed directly to `parseSms()` and immediately discarded. No raw SMS text, phone numbers, or unrelated messages are ever written to IndexedDB, local storage, analytics, or error logs.
+   - **Local-Only**: Parsing and storage happen 100% on-device inside IndexedDB. No cloud servers, external APIs, or analytics are contacted.
+   - **Idempotency**: Repeated scans are completely safe. Deduplication uses the existing transaction `ref`, account mask, and timestamp deduplication logic.
+
+4. **Web & Vercel Fallback**:
+   - The web app running in browser contexts (e.g. Vercel deployment) cleanly detects platform support via `isAndroidNative()`.
+   - If accessed on web browsers or iOS, the app indicates SMS scanning is unavailable and directs the user to the existing **Paste SMS** import workflow.
+
+### Android Toolchain & Build Instructions
+
+#### Prerequisites
+- **Android SDK**: Install API 36 to compile; minimum supported runtime is API 24.
+- **JDK**: Java Development Kit 21 (required by the installed Capacitor Android project).
+- **Android Studio** (recommended) or standalone Android Command Line Tools with `gradle`.
+
+#### Build & Run Commands
+
+```sh
+# 1. Build the production web bundle
+npm run build
+
+# 2. Sync web bundle and native plugins into the Android project
+npx cap sync android
+
+# 3. Open project in Android Studio (optional)
+npx cap open android
+
+# 4. Or build debug APK directly via Gradle (requires JDK and ANDROID_HOME set)
+cd android
+./gradlew assembleDebug
+# On Windows PowerShell:
+# .\gradlew.bat assembleDebug
+
+# 5. Install debug APK to connected Android device or emulator via ADB
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Google Play Distribution Policy Note
+
+> [!WARNING]
+> **Google Play SMS Policy Restriction**
+> Google Play strictly limits the use of `android.permission.READ_SMS` and `android.permission.RECEIVE_SMS`. Apps published to the Google Play Store requesting these permissions must either be registered as the user's default SMS handler or qualify for specific financial transaction verification exceptions under the [Google Play Permissions Policy](https://support.google.com/googleplay/android-developer/answer/10208820).
+>
+> If distributing BirrX outside Google Play (such as direct APK installation, GitHub Releases, or F-Droid), no Google Play restriction applies and native SMS scanning works unrestricted.
 
 ## Verification
 
