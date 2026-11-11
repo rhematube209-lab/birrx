@@ -178,7 +178,6 @@ async function scanInbox(
       for (const p of previews) {
         if (p.status === 'Ready' || p.status === 'Update') totalReady++;
         else if (p.status === 'Duplicate') totalDuplicates++;
-        else totalReviews++;
       }
 
       // 4. Commit recognized domain models to current state
@@ -215,6 +214,7 @@ async function scanInbox(
       });
       const resolved=new Set(previews.filter(p=>p.status!=='Needs review').map(p=>{const msg=filteredMessages[p.message-1];return 'review:'+normalizeSender(msg.sender)+':'+msg.id;}));
       currentState = {...currentState, unmatched:reviews.filter(r=>!resolved.has(r.id)), smsEvents:[...events]};
+      totalReviews = currentState.unmatched.length;
       options.onBatch?.(currentState);
 
       // Raw message bodies from 'envelopes' and 'batch.messages' go out of scope here and are garbage collected.
@@ -257,7 +257,7 @@ async function scanInbox(
     updatedPackages: packageUpdates,
     airtimeUpdates,
     duplicatesSkipped: totalDuplicates,
-    needsReviewCount: totalReviews,
+    needsReviewCount: currentState.unmatched.length,
     latestTimestamp: highestTimestamp,
     stoppedEarly
   };

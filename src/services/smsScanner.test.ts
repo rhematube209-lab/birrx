@@ -376,6 +376,12 @@ describe('Scan regressions', () => {
     };
     expect(afterDismissSafe.unmatched).toHaveLength(2); // Only Awash and Unrecognized remain
     expect(afterDismissSafe.tx).toHaveLength(1); // Transactions intact
+    const rescanned = await runInboxScan({...result.state, unmatched:[]}, {
+      forceFullScan:true,
+      mockFetcher:async()=>({messages,hasMore:false})
+    });
+    expect(rescanned.state.unmatched).toHaveLength(0);
+    expect(rescanned.summary.needsReviewCount).toBe(0);
   });
 
 });
