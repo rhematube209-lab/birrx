@@ -58,6 +58,11 @@ export interface ScannerOptions {
  * Preserves privacy: raw message bodies are processed into structured domain objects and immediately discarded.
  */
 let scanning = false;
+export const smsScanInProgress=()=>scanning;
+export async function withSmsScanPaused<T>(action:()=>Promise<T>):Promise<T>{
+ if(scanning)throw Error('Wait for SMS sync to finish before restoring a backup.');
+ scanning=true;try{return await action();}finally{scanning=false;}
+}
 
 export async function runInboxScan(initialState: State, options: ScannerOptions = {}) {
   if (scanning) throw Error("An SMS scan is already running. Wait for it to finish or stop it first.");

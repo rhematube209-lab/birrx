@@ -1,0 +1,20 @@
+import {useEffect,useRef,useState} from 'react';
+import {createBackup,downloadBackup,MAX_BACKUP_BYTES,readBackup} from './backup';
+import {restorePoint} from './storage';
+import type {State} from './domain';
+
+export function BackupPanel({state,restore}:{state:State;restore:(next:State)=>Promise<void>}){
+ const [draft,setDraft]=useState<Awaited<ReturnType<typeof readBackup>>|null>(null);
+ const [busy,setBusy]=useState(false),[agreed,setAgreed]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[canUndo,setCanUndo]=useState(false),[undoConfirm,setUndoConfirm]=useState(false);
+ const generation=useRef(0);
+ useEffect(()=>{void restorePoint().then(value=>setCanUndo(!!value)).catch(()=>{});return()=>{generation.current++;};},[]);
+ const run=async(fn:()=>Promise<void>)=>{setBusy(true);setError('');setNotice('');try{await fn();}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
+ return <section className="card backuppanel"><h2>Backup & restore</h2><p>Save a file containing your transactions, accounts, notes, plans, goals, review decisions and preferences.</p><small>Backup files contain private financial information and are not encrypted. Store them somewhere you trust. Sign-in sessions, passwords, raw messages and receipts are excluded.</small>
+ <div className="actions"><button disabled={busy} onClick={()=>void run(async()=>{await downloadBackup(await createBackup(state));setNotice('Backup file prepared. Save it using the download or share options.');})}>Export backup</button><label className="backupfile">Choose backup<input type="file" accept=".json,application/json" disabled={busy} onChange={event=>{
+  const file=event.target.files?.[0];event.target.value='';setDraft(null);setAgreed(false);setUndoConfirm(false);setError('');setNotice('');const request=++generation.current;if(!file)return;
+  void run(async()=>{if(file.size>MAX_BACKUP_BYTES)throw Error('Maximum backup size is 10 MB.');const preview=await readBackup(await file.text());if(request===generation.current)setDraft(preview);});
+ }}/></label></div>
+ {draft&&<div className="backuppreview"><h3>Restore preview</h3><p>Created {new Date(draft.createdAt).toLocaleString('en-GB',{timeZone:'Africa/Addis_Ababa'})} EAT</p><dl>{[['Transactions',draft.state.tx.length],['Accounts',draft.state.accounts.length],['Notes',draft.state.notes.length],['Goals',draft.state.goals.length],['Recurring commitments',draft.state.bills.length],['Review messages',draft.state.unmatched.length]].map(([label,count])=><div key={label}><dt>{label}</dt><dd>{count}</dd></div>)}</dl><p>This replaces the current device workspace ({state.tx.length} transactions and {state.notes.length} notes). It does not merge records. Device notification settings, app lock and sign-in remain on this device.</p><label className="check"><input type="checkbox" checked={agreed} disabled={busy} onChange={e=>setAgreed(e.target.checked)}/>Replace my device data with this backup</label><div className="actions"><button className="primary" disabled={busy||!agreed} onClick={()=>void run(async()=>{await restore(draft.state);setDraft(null);setAgreed(false);setCanUndo(true);setNotice('Backup restored and saved. Undo is available below.');})}>Restore backup</button><button disabled={busy} onClick={()=>{setDraft(null);setAgreed(false);}}>Cancel</button></div></div>}
+ {canUndo&&!draft&&<><button disabled={busy} onClick={()=>setUndoConfirm(!undoConfirm)}>Undo last restore</button>{undoConfirm&&<div className="backuppreview"><p>Return to the workspace saved immediately before your last restore? Current edits will be replaced.</p><button disabled={busy} onClick={()=>void run(async()=>{const previous=await restorePoint();if(!previous)throw Error('No restore copy is available.');await restore(previous);setUndoConfirm(false);setNotice('Previous workspace restored.');})}>Confirm undo</button><button disabled={busy} onClick={()=>setUndoConfirm(false)}>Cancel</button></div>}</>}
+ <p role="alert" className="out">{error}</p><p role="status">{busy?'Please wait…':notice}</p></section>;
+}

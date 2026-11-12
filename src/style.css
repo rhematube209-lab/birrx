@@ -67,6 +67,15 @@
 .calendar .datechip{flex:0 1 auto;min-width:0;padding:5px 4px;font-size:9px;gap:3px}
 .calendar .reportaccount{flex:0 0 72px;width:72px;height:44px;min-height:44px;padding:8px 14px 8px 5px;font-size:10px}
 .reportcharts{margin-top:15px}
+.backuppanel p,.backuppanel>small{font-size:12px;overflow-wrap:anywhere}
+.backuppanel .backupfile{font-size:12px;display:grid;gap:5px;width:100%}
+.backupfile input{width:100%}
+.backuppreview{border:1px solid #cdd7cd;border-radius:12px;padding:12px;margin:12px 0}
+.backuppreview h3{margin:0;font-size:14px}
+.backuppreview dl{font-size:12px;margin:10px 0}
+.backuppreview dl>div{display:flex;justify-content:space-between;padding:4px 0;gap:8px}
+.backuppreview dd{font-variant-numeric:tabular-nums;margin:0}
+.backuppanel [role="alert"]:empty,.backuppanel [role="status"]:empty{display:none}
 .accountpanel fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;gap:10px}
 .accountpanel fieldset:disabled{opacity:.7}
 .accountpanel label{display:grid;gap:5px;font-size:12px;font-weight:600}

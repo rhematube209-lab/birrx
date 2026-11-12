@@ -1,5 +1,15 @@
 # BirrX
 
+## Backup and restore
+
+Open **Profile → Backup & restore → Export backup**. Browsers download a `birrx-backup-*.json` file. Android writes `birrx-backup.json` into app cache and opens the native share sheet so you can save or send it. The cache file is replaced on the next export; save a copy outside the app for recovery after uninstalling.
+
+Backups include transactions, reported account balances, packages, airtime, notes, goals, commitments, budgets, category rules, transfer decisions, review metadata and preferences. They exclude authentication sessions, passwords, raw SMS bodies, receipt images, scanner checkpoints and notification delivery history. Files contain readable private financial information and are not encrypted.
+
+Choose a backup file (maximum 10 MB) to validate its version, checksum, schema, integer santim, dates, duplicate records and transfer relationships. Review the counts and explicitly confirm replacement. Restore replaces the workspace rather than merging it, so repeated restore does not duplicate records. The write and an automatic pre-restore snapshot are committed in one IndexedDB transaction. **Undo last restore** offers a confirmed return to that snapshot, including after reloading. Each restore replaces the undo snapshot; edits made since the snapshot are replaced when undoing.
+
+Restore keeps this installation’s sign-in session, notification controls, delivery history and app-lock preference. It resets scanner checkpoints for a deduplicated inbox rescan. Restoring is blocked during SMS scans, and restored records do not generate new-transaction alerts. Cloud backup and cross-device sync are not enabled by file backup.
+
 ## Email accounts
 
 Profile contains registration, email verification, sign-in, password recovery, password changes and device sign-out. Financial records remain in this installation’s IndexedDB workspace; signing in does not upload them, provide cloud backup, or isolate records between accounts on a shared device.
