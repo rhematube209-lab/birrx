@@ -198,4 +198,27 @@ describe('extended Ethiopian banking formats and review classification', () => {
     expect(p.records[0].person).toBe('ethio telecom');
     expect(p.balance).toBe(2774981);
   });
+
+  it('parses Telebirr bill payment for service fee from merchant PLC', () => {
+    const body = 'Dear Tameru\nYou have paid ETB 50.00 for Service Fee from 616690 - REVEL TRADING PLC on 12/11/2026 16:00:13. The service fee is  ETB 0.00 and  15% VAT on the service fee is ETB 0.00. Your transaction number is  DKC53OGAED. Your current balance is ETB 7,454.81. To download your payment information please click this link: https://transactioninfo.ethiotelecom.et/receipt/DKC53OGAED\nThank you for using telebirr\nEthio telecom';
+    const p = parseSms({ sender: '127', body });
+    expect(p.provider).toBe('Telebirr');
+    expect(p.records).toHaveLength(1);
+    expect(p.records[0].amt).toBe(-5000);
+    expect(p.records[0].cat).toBe('Fees');
+    expect(p.records[0].person).toBe('REVEL TRADING PLC');
+    expect(p.records[0].ref).toBe('DKC53OGAED');
+    expect(p.balance).toBe(745481);
+    expect(p.date).toBe('2026-11-12');
+    expect(p.time).toBe('16:00:13');
+
+    // Test preview and commit
+    const s = empty();
+    const previews = previewSms([{ sender: '127', body }], s);
+    expect(previews[0].status).toBe('Ready');
+    const committed = commitSms(s, previews);
+    expect(committed.tx).toHaveLength(1);
+    expect(committed.tx[0].amt).toBe(-5000);
+    expect(committed.accounts.find(a => a.bank === 'Telebirr')?.bal).toBe(745481);
+  });
 });
