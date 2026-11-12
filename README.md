@@ -1,5 +1,29 @@
 # BirrX
 
+## Email accounts
+
+Profile contains registration, email verification, sign-in, password recovery, password changes and device sign-out. Financial records remain in this installation’s IndexedDB workspace; signing in does not upload them, provide cloud backup, or isolate records between accounts on a shared device.
+
+Enable Email authentication with **Confirm email turned off** and a minimum password length of 8. Registration then creates a signed-in session immediately without a confirmation email. Copy `.env.example` to `.env.local` and set the project URL and **publishable** key. Never use a secret or service-role key. Restart Vite after changing environment variables. Vercel needs the same two `VITE_` variables and a new deployment. Android embeds these variables during `npm run build`, followed by `npx cap sync android` and Run in Android Studio.
+
+If email confirmation is enabled in the future, configure the Supabase **Confirm signup** email template to include a code (the app does not use email redirect links):
+
+```html
+<h2>Verify your BirrX email</h2>
+<p>Enter this code in BirrX: {{ .Token }}</p>
+```
+
+Configure **Reset password** similarly:
+
+```html
+<h2>Reset your BirrX password</h2>
+<p>Enter this recovery code in BirrX: {{ .Token }}</p>
+```
+
+Set email OTP expiry to 10 minutes, and configure custom SMTP before public registrations. Supabase’s built-in email service is restricted to project team addresses and has strict sending limits. See [email templates](https://supabase.com/docs/guides/auth/auth-email-templates) and [SMTP configuration](https://supabase.com/docs/guides/auth/auth-smtp). Account requests require internet; existing local finance tools work offline. Passwords and email codes are not saved by BirrX; Supabase’s SDK persists and refreshes the session on this device. Device sign-out removes that session without clearing finance records.
+
+The BirrX project is connected locally through ignored `.env.local`. Email sign-in and registration are enabled. Turn off Confirm email in the project dashboard for immediate registration. Recovery email codes and SMTP can be configured separately. Environment values must also be configured in Vercel for hosted builds.
+
 A phone-width Ethiopian personal-finance app built with React, TypeScript, Vite, Tailwind CSS and IndexedDB. No server account or bank connection is required.
 
 ## Run

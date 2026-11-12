@@ -164,4 +164,38 @@ describe('extended Ethiopian banking formats and review classification', () => {
     expect(previews[1].classification?.category).toBe('unsupported');
     expect(previews[1].classification?.provider).toBe('Awash Bank');
   });
+
+  it('parses Telebirr agent cash-in deposit credited alert from 127', () => {
+    const body = 'Dear Tameru\nYour telebirr account  251949652355 has been credited with ETB 28,237.00 on 12/11/2026 09:42:24 via telebirr agent 295675. Your transaction number is DKC035N87O. Your current balance is ETB 28,249.81. \nThank you for using telebirr\nEthio telecom';
+    const p = parseSms({ sender: '127', body });
+    expect(p.provider).toBe('Telebirr');
+    expect(p.records).toHaveLength(1);
+    expect(p.records[0].amt).toBe(2823700);
+    expect(p.records[0].cat).toBe('Income');
+    expect(p.records[0].name).toBe('Deposit via telebirr agent 295675');
+    expect(p.records[0].ref).toBe('DKC035N87O');
+    expect(p.records[0].person).toBe('telebirr agent 295675');
+    expect(p.balance).toBe(2824981);
+    expect(p.date).toBe('2026-11-12');
+    expect(p.time).toBe('09:42:24');
+
+    // Test preview and commit
+    const s = empty();
+    const previews = previewSms([{ sender: '127', body }], s);
+    expect(previews[0].status).toBe('Ready');
+    const committed = commitSms(s, previews);
+    expect(committed.tx).toHaveLength(1);
+    expect(committed.tx[0].amt).toBe(2823700);
+    expect(committed.accounts.find(a => a.bank === 'Telebirr')?.bal).toBe(2824981);
+    expect(committed.accounts.find(a => a.bank === 'Telebirr')?.date).toBe('2026-11-12');
+  });
+
+  it('parses Telebirr debited with alert via utility', () => {
+    const body = 'Dear Customer Your telebirr account has been debited with ETB 500.00 on 12/11/2026 10:00:00 via ethio telecom. Your transaction number is TX12345. Your current balance is ETB 27,749.81. Thank you for using telebirr Ethio telecom';
+    const p = parseSms({ sender: '127', body });
+    expect(p.records[0].amt).toBe(-50000);
+    expect(p.records[0].cat).toBe('Utilities');
+    expect(p.records[0].person).toBe('ethio telecom');
+    expect(p.balance).toBe(2774981);
+  });
 });

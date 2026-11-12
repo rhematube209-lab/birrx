@@ -2,6 +2,7 @@ import {useState} from 'react';
 import {UserRound,NotebookPen,Inbox,Palette,Bell,Settings,ChevronRight,Wallet} from 'lucide-react';
 import {transferPairs,type State} from './domain';
 import type {Sheet} from './FinanceViews';
+import {AccountPanel} from './AccountPanel';
 
 export function Profile({s,update,go,open}:{s:State;update:(fn:(s:State)=>State)=>void;go:(page:string)=>void;open:(sheet:Sheet)=>void}){
  const [editing,setEditing]=useState(false);
@@ -19,5 +20,5 @@ export function Profile({s,update,go,open}:{s:State;update:(fn:(s:State)=>State)
  {editing&&<form className="profileedit" onSubmit={e=>{e.preventDefault();const data=new FormData(e.currentTarget);update(s=>({...s,prefs:{...s.prefs,profileName:String(data.get('name')||'').trim().slice(0,60)}}));setEditing(false);}}><label>Name<input name="name" maxLength={60} defaultValue={s.prefs.profileName||''} autoComplete="name" placeholder="Your name" required/></label><button className="primary">Save profile</button></form>}
  <div className="profileid"><small>Profile ID</small><code>{s.prefs.profileId||'Creating profile…'}</code><small>This identifies your local profile; it is not a bank account number.</small></div></section>
  <section className="card profilelinks" aria-label="Profile tools">{links.map(({label,description,icon:Icon,action})=><button className="profilelink" key={label} onClick={action}><span className="profilelinkicon"><Icon size={21}/></span><span className="description"><b>{label}</b><small>{description}</small></span><ChevronRight size={17}/></button>)}</section>
- <section className="card"><h2>Account</h2><p className="lead">You’re using BirrX locally. Your records are saved on this device.</p><small>Online sign-in and cloud backup are not connected yet. Your profile ID does not provide account recovery.</small></section></>;
+ <AccountPanel/></>;
 }

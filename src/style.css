@@ -67,6 +67,15 @@
 .calendar .datechip{flex:0 1 auto;min-width:0;padding:5px 4px;font-size:9px;gap:3px}
 .calendar .reportaccount{flex:0 0 72px;width:72px;height:44px;min-height:44px;padding:8px 14px 8px 5px;font-size:10px}
 .reportcharts{margin-top:15px}
+.accountpanel fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;gap:10px}
+.accountpanel fieldset:disabled{opacity:.7}
+.accountpanel label{display:grid;gap:5px;font-size:12px;font-weight:600}
+.accountpanel input{width:100%}
+.accountpanel p{font-size:12px;overflow-wrap:anywhere}
+.accountpanel [role="alert"]:empty,.accountpanel [role="status"]:empty{display:none}
+.accountpanel .accountemail{font-weight:600;font-size:14px}
+.accountlinks{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:10px 0}
+.accountlinks label{width:100%}
 .banktag{overflow:hidden;padding:0}
 .banktag .bank-logo{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit;background:#fff}
 .transaction-icon{overflow:hidden;padding:2px}

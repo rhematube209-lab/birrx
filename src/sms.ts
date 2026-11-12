@@ -87,7 +87,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    sender
   };
  }
- if(/recharge and get|special (?:offer|package)|100% bonus|bonus airtime|cashback|congratulations|happy (?:new year|holiday|eid)|lottery|spin & win|lucky draw|telebirr superapp|buy 1 get 1|free (?:bonus|airtime|MB|GB|min)/i.test(body)&&!/transaction number is|has occurred on your account|was debited with/i.test(body)){
+ if(/recharge and get|special (?:offer|package)|100% bonus|bonus airtime|cashback|congratulations|happy (?:new year|holiday|eid)|lottery|spin & win|lucky draw|telebirr superapp|buy 1 get 1|free (?:bonus|airtime|MB|GB|min)/i.test(body)&&!/transaction number is|has occurred on your account|(?:was|has been) (?:debited|credited) with/i.test(body)){
   return {
    reason:'promotional',
    reasonLabel:'Promotion / Marketing',
@@ -237,15 +237,17 @@ export function parseSms(e:SmsEnvelope):ParsedSms{
    return {provider,identity:'credit-reminder|'+when.at,at:when.at,date:when.date,time:when.time,records:[],issue:'Credit reminder recorded; no payment posted.'};
   }
   const airtime=body.match(new RegExp('You have received ETB\\s*'+amount+'\\s+airtime from\\s+[+\\d*]+\\s+on\\s+(.+?)\\. Your transaction','i'));
-  const sent=body.match(new RegExp('You have transferred ETB\\s*'+amount+'\\s+to\\s+(.+?)\\s*\\([+\\d*]+\\)\\s+on\\s+(.+?)\\. Your transaction','i'));
+  const sent=body.match(new RegExp('You have transferred ETB\\s*'+amount+'\\s+to\\s+(.+?)(?:\\s*\\([+\\d*]+\\))?\\s+on\\s+(.+?)\\. Your transaction','i'));
   const paid=body.match(new RegExp('You have paid ETB\\s*'+amount+'\\s+for package\\s+(.+?)\\s+purchase made for\\s+[\\d*]+\\s+on\\s+(.+?)\\. Your transaction','i'));
-  const peer=body.match(new RegExp('You have (paid|received|deposited|withdrawn) ETB\\s*'+amount+'\\s+(?:to|from)\\s+(?:agent\\s+)?(.+?)\\s*\\([+\\d*]+\\)\\s+on\\s+(.+?)\\. Your transaction','i'));
+  const peer=body.match(new RegExp('You have (paid|received|deposited|withdrawn) ETB\\s*'+amount+'\\s+(?:to|from)\\s+(?:agent\\s+)?(.+?)(?:\\s*\\([+\\d*]+\\))?\\s+on\\s+(.+?)\\.\\s*Your transaction','i'));
+  const credited=body.match(new RegExp('(?:Your (?:telebirr )?account(?:\\s+[+\\d*]+)?\\s+)?(?:was|has been) (credited|debited) with ETB\\s*'+amount+'\\s+on\\s+(.+?)(?:\\s+via\\s+(.+?))?\\.?\\s*Your transaction','i'));
   if(deposit){principal=money(deposit[1]);ref=deposit[2];name='Transfer from CBE';when=noticeDate(deposit[3]);}
   else if(creditPaid||repaid){const m=creditPaid||repaid!;principal=-money(m[1]);name=creditPaid?'Telebirr credit repayment':'Telebirr weekly loan repayment';category='Loan repayment';if(creditPaid)when=noticeDate(creditPaid[2]);if(!when)throw Error('Loan repayment requires its SMS receipt date.');ref='LOAN-'+(creditPaid?'CREDIT':'WEEKLY')+'-'+when.at+'-'+Math.abs(principal);}
   else if(airtime){principal=-money(airtime[1]);name='Airtime purchase';category='Utilities';when=dmy(airtime[2]);}
   else if(sent){principal=-money(sent[1]);person=sent[2].trim();name='Transfer to '+person;when=dmy(sent[3]);}
   else if(paid){principal=-money(paid[1]);name=paid[2].trim();category='Utilities';when=dmy(paid[3]);}
   else if(peer){const incoming=/received|deposited/i.test(peer[1]);principal=money(peer[2])*(incoming?1:-1);person=peer[3].trim();name=(incoming?'Received from ':'Paid to ')+person;category=incoming?'Income':/electric|water|utility|ethio telecom/i.test(person)?'Utilities':'Other';when=noticeDate(peer[4]);}
+  else if(credited){const incoming=/credited/i.test(credited[1]);principal=money(credited[2])*(incoming?1:-1);person=credited[4]?credited[4].trim():'';name=incoming?(person?'Deposit via '+person:'Telebirr credit'):(person?'Payment via '+person:'Telebirr debit');category=incoming?'Income':/electric|water|utility|ethio telecom/i.test(person)?'Utilities':'Other';when=noticeDate(credited[3])||dmy(credited[3]);}
   else throw Error('Telebirr financial format needs review.');
   ref=ref||body.match(/Your transaction number is\s+([A-Za-z0-9-]+)/i)?.[1]||'';
   feeParts.service=findMoney(body,'The service fee is\\s+ETB')||0;feeParts.vat=findMoney(body,'VAT on the service fee is ETB')||0;
