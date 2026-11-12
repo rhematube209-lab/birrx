@@ -1,4 +1,5 @@
 import {useState} from 'react';
+import {BrandedSelect} from './BrandedSelect';
 import {eatDate,totals,uid,type State} from './domain';
 import {commitSms,previewSmsText,smsSummary,type SmsPreview} from './sms';
 import {type Money} from './FinanceViews';
@@ -13,7 +14,7 @@ export function SmsImport({state,update,money}:{state:State;update:(fn:(s:State)
  return <div className="smsimport">
   <p>Paste messages from one sender. CBE, BOA and Telebirr formats are supported. Package notices update allowances without adding spending.</p>
   <form onSubmit={e=>{e.preventDefault();setNotice('');try{setItems(previewSmsText(body,sender,receivedDate,receivedTime,state));}catch(error){setItems([]);setNotice((error as Error).message);}}}>
-   <label>SMS sender<select value={sender} onChange={e=>{setSender(e.target.value);reset();}}>{['CBE','BOA','127','994','251994','810','telebirr'].map(s=><option key={s}>{s}</option>)}</select></label>
+   <label>SMS sender<BrandedSelect aria-label="SMS sender" kind="account" value={sender} onChange={e=>{setSender(e.target.value);reset();}}>{['CBE','BOA','127','994','251994','810','telebirr'].map(s=><option key={s}>{s}</option>)}</BrandedSelect></label>
    <div className="formgrid"><label>SMS receipt date · Gregorian<input aria-label="SMS receipt date" type="date" value={receivedDate} onInput={e=>{setDate(e.currentTarget.value);reset();}} onChange={e=>{setDate(e.target.value);reset();}}/></label><label>SMS receipt time · EAT<input aria-label="SMS receipt time" type="time" step="1" value={receivedTime} onInput={e=>{setTime(e.currentTarget.value);reset();}} onChange={e=>{setTime(e.target.value);reset();}}/></label></div>
    <small>Use the original message timestamp. Required when the message has no transaction date; leave unknown times blank. For a batch, these fields apply to every message without its own date.</small>
    {state.hidden?<p>SMS text is hidden with amounts. <button type="button" onClick={()=>update(s=>({...s,hidden:false}))}>Show amounts to edit SMS</button></p>:<label>Pasted SMS messages<textarea required value={body} onChange={e=>{setBody(e.target.value);reset();}} placeholder="Dear Customer…"/></label>}

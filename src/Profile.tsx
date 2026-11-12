@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {UserRound,NotebookPen,Inbox,Palette,Bell,Settings,ChevronRight,Wallet} from 'lucide-react';
+import {UserRound,NotebookPen,Inbox,Palette,Bell,Settings,ChevronRight,Wallet,Tags} from 'lucide-react';
 import {transferPairs,type State} from './domain';
 import type {Sheet} from './FinanceViews';
 import {AccountPanel} from './AccountPanel';
@@ -10,6 +10,7 @@ export function Profile({s,update,go,open,restore}:{s:State;update:(fn:(s:State)
  const name=s.prefs.profileName||'Your profile';
  const pending=transferPairs(s).filter(p=>p.decision==='pending').length+s.tx.filter(t=>t.flag).length+s.unmatched.length;
  const links=[
+  {label:'Categories',description:'Choose, show or create categories',icon:Tags,action:()=>go('Categories')},
   {label:'Notes',description:`${s.notes.length} personal notes`,icon:NotebookPen,action:()=>go('Note')},
   {label:'Inbox',description:pending?`${pending} items to review`:'All caught up',icon:Inbox,action:()=>go('Review')},
   {label:'Theme',description:s.prefs.theme==='dark'?'Dark':'Light',icon:Palette,action:()=>open({kind:'preference',id:'theme',title:'Theme'})},

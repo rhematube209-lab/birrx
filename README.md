@@ -1,5 +1,19 @@
 # BirrX
 
+## Categories
+
+Selectors use a shared BirrX bottom sheet in light and dark themes. Categories show their icons, colors, groups and favorites; accounts show bank logos; direction filters show arrows and descriptions. Longer lists support search. Pickers support keyboard navigation, focus restoration and browser/Android Back without closing a parent transaction sheet. Filter controls retain their compact phone layout, while option rows have comfortable touch targets. Native hidden form controls keep form submission values intact without opening the system radio-list UI.
+
+Category choices use wrapping pill buttons with a category-colored outline icon on the left, label on the right and a softly tinted background. Favorites appear in their own group without star decorations in the picker; selected choices show a checkmark. Search opens only when tapped. Android Back first dismisses the top picker or detail dialog; normal page navigation or app exit happens only when no dialog consumes Back. This native Back change requires rebuilding and reinstalling the Android APK.
+
+Tap the star beside any category to move it into **Favorites** at the top of the page. Tap again to remove it. Favoriting a hidden category also shows it. Favorites appear first in pickers, survive edits and reloads, and are included in backups. Hiding a favorite keeps its star saved while moving it to Hidden until shown again.
+
+Open **Profile → Categories** to search, show/hide, edit icons and colors, or create custom categories. The catalog includes the special Internal Transfer, Loan, Owed and Repayment categories, the existing BirrX categories, and Airtime & packages, Bills, Charity, Coffee, Eating out, Education, Events, Family, Food delivery, Friends, Groceries and Lottery. Food and Fun retain their nested categories.
+
+Custom categories have a name of up to 30 characters, Money out/Money in/Both ways selection, an icon, color controls and an optional Food or Fun parent. Transaction details and category spending limits use dropdown pickers. Hidden categories remain available on records already using them and stay included in reports. Existing free-text labels are retained. Renaming a custom category updates its records, remembered rules and category limits; deleting it requires confirmation and moves references to Other without deleting transactions. Built-in names and the Other fallback are protected. Categories are saved locally and included in backup files; older backups still work.
+
+Category direction controls picker availability. It does not change a transaction’s sign, income/spending treatment or own-account transfer decision. Confirm own transfers separately in Inbox.
+
 ## Backup and restore
 
 Open **Profile → Backup & restore → Export backup**. Browsers download a `birrx-backup-*.json` file. Android writes `birrx-backup.json` into app cache and opens the native share sheet so you can save or send it. The cache file is replaced on the next export; save a copy outside the app for recovery after uninstalling.

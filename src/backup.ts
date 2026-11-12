@@ -13,6 +13,7 @@ const period=z.object({scope:z.enum(['Year','Month','Day','Hour']),date,hour:z.s
 const amounts=z.record(z.string(),positive);
 const stateSchema=z.object({
  version:z.literal(1),
+ categoryDefinitions:z.array(z.object({id,name:text,direction:z.enum(['out','in','both']),icon:z.string().max(50),color:z.string().regex(/^#[a-f0-9]{6}$/i),hidden:z.boolean(),favorite:z.boolean().optional(),builtin:z.boolean().optional(),special:z.boolean().optional(),parent:id.optional()})).max(2000).optional(),
  tx:z.array(z.object({id,name:text,bank:id,amt:money,cat:text,date,time,ref:id,person:text,note:text,flag:z.boolean(),transfer:id.optional(),sms:z.object({sender:text,reference:id,accountMask:text.optional(),role:z.enum(['principal','fee']),feeParts:z.object({service:positive,vat:positive,disaster:positive}).optional()}).optional()})).max(100000),
  accounts:z.array(z.object({bank:id,bal:positive.nullable(),date:z.union([date,z.literal('')]),time:time.optional(),accountMask:text.optional()})).max(1000),
  packages:z.array(z.object({type:text,size:text,end:date,id:id.optional(),name:text.optional(),start:text.optional(),endTime:time.optional(),bonus:text.optional(),usedPercent:z.number().min(0).max(100).optional(),status:z.enum(['active','exhausted']).optional(),reportedAt:text.optional(),source:z.literal('sms').optional()})),
@@ -28,6 +29,7 @@ function cleanState(value:unknown):State{
  let incoming=0,outgoing=0,balance=0;for(const r of s.tx){if(r.amt>0)incoming+=r.amt;else outgoing-=r.amt;}for(const account of s.accounts)balance+=account.bal||0;
  if(![incoming,outgoing,balance].every(Number.isSafeInteger))throw Error('Backup totals exceed safe money limits.');
  const unique=(values:string[])=>new Set(values).size===values.length;
+ if(s.categoryDefinitions&&(!unique(s.categoryDefinitions.map(c=>c.id))||!unique(s.categoryDefinitions.map(c=>c.name.toLowerCase()))))throw Error('Backup contains duplicate categories.');
  if(![s.tx,s.goals,s.bills,s.notes,s.unmatched].every(rows=>unique(rows.map(r=>r.id)))||!unique(s.accounts.map(a=>a.bank.toLowerCase()))||!unique(s.tx.map(key)))throw Error('Backup contains duplicate records.');
  const transfers=new Map<string,State['tx']>();for(const r of s.tx)if(r.transfer)transfers.set(r.transfer,[...(transfers.get(r.transfer)||[]),r]);
  for(const rows of transfers.values())if(rows.length!==2||rows[0].amt+rows[1].amt!==0||rows[0].bank===rows[1].bank)throw Error('Backup contains an incomplete own-account transfer.');
