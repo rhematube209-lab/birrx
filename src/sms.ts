@@ -162,7 +162,13 @@ export function normalizeSms(body:string){return body
  .replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&')
  .replace(/\\([*:.\/])/g,'$1').replace(/\[([^\]]*)\]\((https?:[^)]+)\)/g,'$2')
  .replace(/\\\s*(?:\r?\n|$)/g,'\n').replace(/\s+/g,' ').trim();}
-export function splitSms(body:string){return normalizeSms(body).split(/(?=Dear\s+(?:customer\b|[A-Za-z]))/i).map(s=>s.trim()).filter(Boolean);}
+export function splitSms(body:string){
+ const clean=normalizeSms(body).replace(/^["'`\s]+|["'`\s]+$/g,'').trim();
+ return clean
+  .split(/(?=Dear\s+(?:customer\b|[A-Za-z]))/i)
+  .map(s=>s.replace(/^["'`\s]+|["'`\s]+$/g,'').trim())
+  .filter(s=>s.length>=15&&/[a-zA-Z0-9]/.test(s));
+}
 const senderId=(s:string)=>s.trim().replace(/^\+/,'').replace(/\s+/g,'').toUpperCase();
 function money(value:string){const clean=value.replaceAll(',','');if(value.includes(',')&&!/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(value)||!/^\d{1,10}(?:\.\d{1,2})?$/.test(clean))throw Error('Invalid SMS money amount.');return /^0+(?:\.0{1,2})?$/.test(clean)?0:cents(clean);}
 function findMoney(body:string,pattern:string){const match=body.match(new RegExp(pattern+'\\s*'+amount,'i'));return match?money(match[1]):undefined;}
@@ -191,7 +197,11 @@ const planKey=(name:string)=>name.toLowerCase().replace(/[^a-z0-9.]/g,'');
 // No network calls: receipt links supply identities only. Message text never leaves this parser.
 export function parseSms(e:SmsEnvelope):ParsedSms{
  const sender=senderId(e.sender);if(!supported.has(sender))throw Error('Unsupported SMS sender.');
- const body=normalizeSms(e.body),provider=sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr';
+ const body=normalizeSms(e.body);
+ let provider=sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr';
+ if(/Thank you for using telebirr/i.test(body))provider='Telebirr';
+ else if(/Thanks for Banking with CBE/i.test(body))provider='CBE';
+ else if(/Bank of Abyssinia\b/i.test(body))provider='BOA';
  let when=metadata(e),ref='',principal:number|undefined,person='',name='',category='Other',mask:string|undefined,balance:number|undefined;
  const feeParts={service:0,vat:0,disaster:0};
  if(provider==='BOA'){
@@ -288,7 +298,13 @@ export function previewSms(messages:SmsEnvelope[],state:State):SmsPreview[]{
 }
 export function previewSmsText(body:string,sender:string,date:string,time:string,state:State):SmsPreview[]{
  if(/^DEMO\s*\|/.test(body.trim()))return legacyPreview(body,'Paste SMS',state).map(p=>({message:p.row,status:p.status==='Ready'?'Ready':p.status==='Duplicate'?'Duplicate':'Needs review',issue:p.record?undefined:p.status,parsed:p.record?{provider:p.record.bank,identity:p.record.bank+'|'+p.record.ref,at:p.record.date,date:p.record.date,time:p.record.time,records:[p.record]}:undefined}));
- return previewSms(splitSms(body).map(text=>({sender,body:text,date:date||undefined,time:time||undefined})),state);
+ return previewSms(splitSms(body).map(text=>{
+  let s=sender;
+  if(/Thank you for using telebirr/i.test(text))s='127';
+  else if(/Thanks for Banking with CBE/i.test(text))s='CBE';
+  else if(/Bank of Abyssinia\b/i.test(text))s='BOA';
+  return {sender:s,body:text,date:date||undefined,time:time||undefined};
+ }),state);
 }
 export function commitSms(state:State,previews:SmsPreview[]){let next=state;for(const item of previews){if(!item.parsed||!['Ready','Update'].includes(item.status))continue;next=apply(next,item.parsed);}return next;}
 export function smsSummary(p:ParsedSms){return p.package?`${p.package.name} · ${p.package.activation?'Activation':p.package.status==='exhausted'?'Exhausted':p.package.usedPercent!==undefined?p.package.usedPercent+'% used':'Expiry notice'}`:p.airtime!==undefined?'Prepaid airtime balance · no income or expense':p.records[0]?.name||'Message';}

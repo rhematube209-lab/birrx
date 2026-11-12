@@ -221,4 +221,15 @@ describe('extended Ethiopian banking formats and review classification', () => {
     expect(committed.tx[0].amt).toBe(-5000);
     expect(committed.accounts.find(a => a.bank === 'Telebirr')?.bal).toBe(745481);
   });
+
+  it('handles user pasting with surrounding quotes and wrong sender dropdown', () => {
+    const rawWithQuotes = `"Dear Tameru\nYour telebirr account  251949652355 has been credited with ETB 28,237.00 on 12/11/2026 09:42:24 via telebirr agent 295675. Your transaction number is DKC035N87O. Your current balance is ETB 28,249.81. \nThank you for using telebirr\nEthio telecom"`;
+    // Even if user left dropdown on CBE
+    const previews = previewSmsText(rawWithQuotes, 'CBE', '', '', empty());
+    expect(previews).toHaveLength(1);
+    expect(previews[0].status).toBe('Ready');
+    expect(previews[0].parsed?.provider).toBe('Telebirr');
+    expect(previews[0].parsed?.records[0].amt).toBe(2823700);
+    expect(previews[0].parsed?.records[0].ref).toBe('DKC035N87O');
+  });
 });

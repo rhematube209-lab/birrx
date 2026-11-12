@@ -18,7 +18,7 @@ export const isSupportedSender = (sender: string): boolean => {
 
 export const OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours safe overlap window
 export const BATCH_SIZE = 50;
-export const SMS_PARSER_VERSION = '3';
+export const SMS_PARSER_VERSION = '4';
 
 export interface ScanProgress {
   stage: 'idle' | 'scanning' | 'processing' | 'done' | 'stopped' | 'error';
