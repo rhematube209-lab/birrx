@@ -21,8 +21,8 @@ export function reminderPlan(s:State,now=new Date()):Reminder[]{
 export function milestoneEvents(s:State,now=new Date()){
  const events:{key:string;title:string;body:string;target:NotificationTarget}[]=[],month=eatDate(now.toISOString()).slice(0,7);
  if(enabled(s,'plans')){const spent=totals(s.tx.filter(r=>r.date.startsWith(month))).exp,limit=s.monthlyBudgets?.[month]??s.budget;
-  if(limit>0)for(const percent of [spent>=limit?100:80])if(spent>=limit*percent/100)events.push({key:'budget:'+month+':'+percent,title:percent===100?'Monthly limit reached':'Approaching your monthly limit',body:'Tap to review your spending plan.',target:{kind:'plan',id:'Plan'}});
+  if(limit>0)for(const percent of [spent>=limit?100:80])if(spent>=limit*percent/100)events.push({key:'budget:'+month+':'+percent,title:percent===100?'Monthly limit reached':'Approaching your monthly limit',body:percent===100?'Your spending has reached your monthly limit. Tap to review.':'Your spending has reached 80% of your monthly limit. Tap to review.',target:{kind:'plan',id:'Plan'}});
  }
- if(enabled(s,'goals'))for(const g of s.goals)if(g.target>0)for(const percent of [g.saved>=g.target?100:50])if(g.saved>=g.target*percent/100)events.push({key:'goal:'+g.id+':'+g.target+':'+percent,title:percent===100?'Goal reached':'Goal milestone reached',body:'Tap to review your goal progress.',target:{kind:'goal',id:g.id}});
+ if(enabled(s,'goals'))for(const g of s.goals)if(g.target>0)for(const percent of [g.saved>=g.target?100:50])if(g.saved>=g.target*percent/100)events.push({key:'goal:'+g.id+':'+g.target+':'+percent,title:percent===100?'Goal reached':'Goal milestone reached',body:percent===100?'You reached your savings goal. Tap to review.':'A savings goal is halfway complete. Tap to review.',target:{kind:'goal',id:g.id}});
  return events;
 }

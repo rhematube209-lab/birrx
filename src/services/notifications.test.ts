@@ -21,3 +21,16 @@ it('posts a goal milestone once, schedules private reminders without exact-alarm
 it('does not post when permission is denied',async()=>{
  api.checkPermissions.mockResolvedValue({display:'denied'});const s=fresh();s.prefs.notify_plans='On';const {syncNotifications}=await import('./notifications');await syncNotifications(s,vi.fn(),vi.fn());expect(api.schedule).not.toHaveBeenCalled();
 });
+it('sends distinct test messages and routes for each notification type',async()=>{
+ const {testNotification}=await import('./notifications');
+ for(const kind of ['transactions','plans','goals','recurring'] as const)await testNotification(kind);
+ const messages=api.schedule.mock.calls.map(c=>c[0].notifications[0]);
+ expect(messages.map(n=>n.title)).toEqual(['Test: New transaction','Test: Spending plan','Test: Goal milestone','Test: Payment reminder']);
+ expect(messages.map(n=>n.extra)).toEqual([{kind:'transaction'},{kind:'plan',id:'Plan'},{kind:'plan',id:'Goals'},{kind:'bill'}]);
+});
+it('describes the direction and account of a new transaction without exposing its amount',async()=>{
+ const s=fresh();s.prefs.notify_transactions='On';const tx={...s.tx[0],bank:'CBE',amt:-123456};
+ const {notifyNewTransactions}=await import('./notifications');await notifyNewTransactions(s,[tx]);
+ const message=api.schedule.mock.calls[0][0].notifications[0];
+ expect(message.title).toBe('New outgoing transaction');expect(message.body).toContain('CBE');expect(JSON.stringify(message)).not.toContain('123456');expect(message.extra).toEqual({kind:'transaction',id:tx.id});
+});

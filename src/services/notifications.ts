@@ -36,6 +36,17 @@ export function syncNotifications(s:State,onEvents:(events:string[])=>void,onErr
 }
 export async function notifyNewTransactions(s:State,records:Tx[]){
  if(!isAndroidNative()||!enabled(s,'transactions')||!records.length||await notificationPermission()!=='granted')return;
- await LocalNotifications.schedule({notifications:[{id:30000,title:records.length===1?'New transaction recorded':'New transactions recorded',body:'Tap to review and categorize your transaction.',extra:{kind:'transaction',id:records[records.length-1].id},isExactNotification:false}]});
+ const last=records[records.length-1];
+ await LocalNotifications.schedule({notifications:[{id:30000,title:records.length===1?'New '+(last.amt<0?'outgoing':'incoming')+' transaction':'New transactions recorded',body:records.length===1?`${last.bank} activity is ready to categorize. Tap to review.`:`${records.length} transactions are ready to categorize. Tap to review the latest.`,extra:{kind:'transaction',id:last.id},isExactNotification:false}]});
 }
-export async function testNotification(){if(isAndroidNative())await LocalNotifications.schedule({notifications:[{id:9999,title:'BirrX notifications are ready',body:'Tap to open your plan.',extra:{kind:'plan',id:'Plan'},isExactNotification:false}]});else if(await notificationPermission()==='granted')new Notification('BirrX notifications are ready',{body:'Keep BirrX open for browser notifications.'});}
+export async function testNotification(kind:'transactions'|'plans'|'goals'|'recurring'){
+ const examples:Record<typeof kind,{title:string;body:string;target:NotificationTarget}>={
+  transactions:{title:'Test: New transaction',body:'A new transaction is ready to categorize. Tap to open transactions.',target:{kind:'transaction'}},
+  plans:{title:'Test: Spending plan',body:'Your spending has reached 80% of your monthly limit. Tap to review.',target:{kind:'plan',id:'Plan'}},
+  goals:{title:'Test: Goal milestone',body:'A savings goal is halfway complete. Tap to review your goals.',target:{kind:'plan',id:'Goals'}},
+  recurring:{title:'Test: Payment reminder',body:'A recurring payment is due tomorrow. Tap to review.',target:{kind:'bill'}}
+ };
+ const example=examples[kind];
+ if(isAndroidNative())await LocalNotifications.schedule({notifications:[{id:9999,title:example.title,body:example.body,extra:example.target,isExactNotification:false}]});
+ else if(await notificationPermission()==='granted')new Notification(example.title,{body:example.body});
+}
