@@ -74,7 +74,7 @@ npm exec vite preview -- --host 0.0.0.0
 
 ## Data and behavior
 
-Demo data is seeded once: 10 transactions across October and November 2026; CBE and Telebirr balances; Data and Voice packages; an emergency-fund goal; and recurring rent. November starts at **34,500 ETB income, 12,535 ETB spending, 21,965 ETB net**. Confirm the TB1042 transfer in the review inbox to get **32,000 / 10,035 / 21,965 ETB**. Undo restores the initial totals. The 5 ETB fee stays spending.
+New installations start with an empty workspace and the current month selected. Existing workspaces are preserved. SMS scans import supported messages after permission is granted.
 
 All money uses integer santim. `src/domain.ts` supplies the shared reporting, reconciliation, import and export logic. Dates and optional times represent East Africa Time; missing times stay unknown. The Ethiopian calendar setting changes displayed dates, while Gregorian date-entry controls are explicitly labeled and stored dates remain unchanged. Reporting periods retain their Gregorian boundaries.
 
