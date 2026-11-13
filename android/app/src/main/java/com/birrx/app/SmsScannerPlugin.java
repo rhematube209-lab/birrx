@@ -43,6 +43,15 @@ public class SmsScannerPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getNotificationHistory(PluginCall call) {
+        JSObject result = new JSObject();
+        try {
+            result.put("items", new JSArray(getContext().getSharedPreferences("birrx-notifications", 0).getString("history", "[]")));
+            call.resolve(result);
+        } catch (Exception e) { call.reject("Unable to read notification history", e); }
+    }
+
+    @PluginMethod
     public void consumeNotificationAction(PluginCall call) {
         JSObject result = new JSObject();
         android.content.Intent intent = getActivity().getIntent();
@@ -58,6 +67,7 @@ public class SmsScannerPlugin extends Plugin {
     @Override
     public void load() {
         super.load();
+        NotificationChannels.ensure(getContext());
         instance = this;
     }
 
@@ -139,6 +149,15 @@ public class SmsScannerPlugin extends Plugin {
         if (sinceTimestamp != null && sinceTimestamp > 0) {
             selection = "date > ?";
             selectionArgs = new String[] { String.valueOf(sinceTimestamp) };
+        }
+
+        Long afterTimestamp = call.getLong("afterTimestamp");
+        String afterId = call.getString("afterId");
+        if (afterTimestamp != null && afterId != null) {
+            if (!afterId.matches("[0-9]+")) { call.reject("Invalid inbox cursor"); return; }
+            selection = "date > ? AND (date > ? OR (date = ? AND _id > ?))";
+            selectionArgs = new String[] {String.valueOf(sinceTimestamp == null ? 0L : sinceTimestamp), String.valueOf(afterTimestamp), String.valueOf(afterTimestamp), afterId};
+            offset = 0;
         }
 
         String sortOrder = "date ASC, _id ASC";

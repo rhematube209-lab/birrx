@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ShieldCheck, RefreshCw, AlertCircle, CheckCircle, StopCircle, Smartphone } from 'lucide-react';
+import { ShieldCheck, RefreshCw, CheckCircle, StopCircle, Smartphone } from 'lucide-react';
 import { type State } from './domain';
 import { checkSmsPermission, requestSmsPermission, isAndroidNative } from './services/androidSmsBridge';
 import { runInboxScan, type ScanProgress, type ScanSummary } from './services/smsScanner';
@@ -13,9 +13,10 @@ interface Props {
   onboarding?: boolean;
 }
 
-export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice, onboarding }: Props) {
+export function AndroidSmsSyncModal({ state, getState, update, onClose, onboarding }: Props) {
   const [permissionStatus, setPermissionStatus] = useState<'checking' | 'prompt' | 'granted' | 'denied' | 'unsupported'>('checking');
   const [scanning, setScanning] = useState(false);
+  const [requesting, setRequesting] = useState(false);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [summary, setSummary] = useState<ScanSummary | null>(null);
   const [error, setError] = useState('');
@@ -37,8 +38,11 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
   }, []);
 
   const handleRequestPermission = async () => {
+    if(requesting||scanning)return;
+    setRequesting(true);
     setError('');
     const res = await requestSmsPermission();
+    setRequesting(false);
     if (res.granted) {
       setPermissionStatus('granted');
       startScan(!!onboarding);
@@ -65,7 +69,6 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
       });
 
       setSummary(result.summary);
-      onNotice?.(`${result.summary.stoppedEarly ? 'Scan incomplete' : 'Scan complete'}: ${result.summary.newTransactions} new transactions, ${result.summary.airtimeUpdates} airtime balance updates, ${result.summary.needsReviewCount} messages needing review.`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -85,8 +88,8 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
 
   return (
     <div className="android-sms-sync">
-      <div className="line">
-        <h2>Android SMS Sync</h2>
+      <div className="line sms-sync-heading">
+        <h2>Connect your messages</h2>
         <small>CBE · BOA · Telebirr</small>
       </div>
 
@@ -102,24 +105,24 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
           <div className="privacy-badge">
             <ShieldCheck size={28} className="shield-icon" />
             <div>
-              <b>Privacy-First Local Scanning</b>
-              <small>BirrX only reads banking messages from supported senders (CBE, BOA, Telebirr/Ethio telecom).</small>
+              <b>Your messages stay on your phone</b>
+              <small>Import transactions from CBE, BOA and Telebirr automatically.</small>
             </div>
           </div>
 
-          <div className="policy-points">
-            <p>• <strong>Strictly Local:</strong> Messages are processed entirely on your device into structured transactions. No cloud server is ever contacted.</p>
-            <p>• <strong>Zero Text Storage:</strong> SMS bodies are discarded immediately after parsing. Raw message texts are never saved to database or logs.</p>
-            <p>• <strong>Read-Only:</strong> BirrX never requests permission to send SMS or read personal contacts.</p>
-          </div>
+          <ul className="policy-points">
+            <li><strong>Processed on your phone</strong><span>Supported bank messages become transactions. SMS text is never uploaded.</span></li>
+            <li><strong>Only the details you need</strong><span>Amounts, dates and references are saved. Original message text is discarded.</span></li>
+            <li><strong>You stay in control</strong><span>BirrX cannot send messages or read contacts. You can use manual import instead.</span></li>
+          </ul>
 
           {error && <p className="out" role="alert">{error}</p>}
 
-          <div className="actions">
-            <button className="primary" onClick={handleRequestPermission}>
-              {permissionStatus === 'denied' ? 'Try Requesting Permission Again' : 'Grant SMS Permission & Scan'}
+          <div className="actions sms-permission-actions">
+            <button className="primary" disabled={requesting} onClick={handleRequestPermission}>
+              {requesting?'Please wait…':permissionStatus === 'denied' ? 'Try again' : 'Allow & scan'}
             </button>
-            <button onClick={onClose}>Cancel / Use Manual Fallback</button>
+            <button disabled={requesting} onClick={onClose}>Use manually</button>
           </div>
         </div>
       ) : (
@@ -128,7 +131,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
           <div className="sync-status-card">
             <div>
               <small>Last Inbox Sync</small>
-              <b>{lastScanTime} EAT</b>
+              <b>{lastScanTime}{state.prefs?.lastSmsScanIso?' EAT':''}</b>
             </div>
             <div>
               <small>Last Scanned Messages</small>
@@ -178,14 +181,14 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
 
           {error && <p className="out" role="alert">{error}</p>}
 
-          <div className="actions">
+          {onboarding&&summary&&!summary.stoppedEarly&&!scanning?<div className="sms-complete-action"><button className="primary" onClick={onClose}>Continue to BirrX</button></div>:<div className="actions sms-scan-actions">
             <button className="primary" disabled={scanning || permissionStatus !== 'granted'} onClick={()=>startScan()}>
-              <RefreshCw size={14} /> {state.prefs?.lastSmsScanTimestamp ? 'Rescan for New Messages' : 'Start Full Inbox Scan'}
+              <RefreshCw size={14} /> {state.prefs?.lastSmsScanTimestamp ? 'Scan new' : 'Scan inbox'}
             </button>
-            <button disabled={scanning || permissionStatus !== 'granted'} onClick={()=>startScan(true)}>Rescan entire inbox</button>
-            <button disabled={scanning} onClick={onClose}>{onboarding ? 'Continue to BirrX' : 'Close'}</button>
-          </div>
-          <small>Rescan entire inbox includes older supported messages. Existing transactions and edits are preserved; duplicates are skipped.</small>
+            <button disabled={scanning || permissionStatus !== 'granted'} onClick={()=>startScan(true)}>Rescan all</button>
+            <button disabled={scanning} onClick={onClose}>{onboarding ? 'Continue' : 'Close'}</button>
+          </div>}
+          {!(onboarding&&summary&&!summary.stoppedEarly&&!scanning)&&<small>Rescan all includes older supported messages. Existing transactions and edits are preserved; duplicates are skipped.</small>}
         </div>
       )}
     </div>

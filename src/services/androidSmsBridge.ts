@@ -23,6 +23,8 @@ interface SmsScannerPluginNative {
   requestSmsPermission(): Promise<PermissionCheckResult>;
   scanInbox(options: {
     sinceTimestamp?: number;
+    afterTimestamp?: number;
+    afterId?: string;
     limit?: number;
     offset?: number;
   }): Promise<ScanBatchResult>;
@@ -63,6 +65,8 @@ export const requestSmsPermission = async (): Promise<PermissionCheckResult> => 
 
 export const scanNativeInbox = async (options: {
   sinceTimestamp?: number;
+  afterTimestamp?: number;
+  afterId?: string;
   limit?: number;
   offset?: number;
 }): Promise<ScanBatchResult> => {

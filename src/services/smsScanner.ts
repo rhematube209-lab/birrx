@@ -18,7 +18,7 @@ export const isSupportedSender = (sender: string): boolean => {
 
 export const OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours safe overlap window
 export const BATCH_SIZE = 50;
-export const SMS_PARSER_VERSION = '4';
+export const SMS_PARSER_VERSION = '5';
 
 export interface ScanProgress {
   stage: 'idle' | 'scanning' | 'processing' | 'done' | 'stopped' | 'error';
@@ -99,6 +99,7 @@ async function scanInbox(
   }
 
   let offset = 0;
+  let cursor: {afterTimestamp:number;afterId:string}|undefined;
   let hasMore = true;
   let totalScanned = 0;
   let totalReady = 0;
@@ -135,7 +136,8 @@ async function scanInbox(
       : await scanNativeInbox({
           sinceTimestamp,
           limit: currentLimit,
-          offset
+          offset: cursor ? 0 : offset,
+          ...cursor
         });
 
     if (!batch.messages.length) {
@@ -156,6 +158,7 @@ async function scanInbox(
 
     totalScanned += batch.messages.length;
     offset += batch.messages.length;
+    if(!mockFetcher){const last=batch.messages[batch.messages.length-1];cursor={afterTimestamp:last.timestamp,afterId:last.id};}
     hasMore = batch.hasMore;
 
     if (filteredMessages.length > 0) {
