@@ -59,9 +59,9 @@ export function AccountPanel(){
  const codeMode=mode==='verify'||mode==='recover',passwordMode=mode==='signin'||mode==='signup'||mode==='password';
  return <section className="card accountpanel"><h2>{title}</h2><p>{codeMode?`Enter the code sent to ${email}.`:'Your financial records remain available offline on this device.'}</p><form key={mode} onSubmit={submit} aria-busy={busy}>
   <fieldset disabled={busy}>
-   {mode==='signup'&&<label>Name<input name="name" autoComplete="name" maxLength={60} required/></label>}
-   {!codeMode&&mode!=='password'&&<label>Email<input name="email" type="email" autoComplete="email" inputMode="email" defaultValue={email} required/></label>}
-   {passwordMode&&<label>Password<input name="password" type="password" autoComplete={mode==='signin'?'current-password':'new-password'} minLength={mode==='signin'?1:8} required/></label>}
+   {mode==='signup'&&<label>Name<input name="name" autoComplete="name" placeholder="Your name" maxLength={60} required/></label>}
+   {!codeMode&&mode!=='password'&&<label>Email<input name="email" type="email" placeholder="you@example.com" autoComplete="email" inputMode="email" defaultValue={email} required/></label>}
+   {passwordMode&&<label>Password<input name="password" type="password" placeholder="Enter your password" autoComplete={mode==='signin'?'current-password':'new-password'} minLength={mode==='signin'?1:8} required/></label>}
    {(mode==='signup'||mode==='password')&&<><small>Use at least 8 characters.</small><label>Confirm password<input name="confirm" type="password" autoComplete="new-password" minLength={8} required/></label></>}
    {codeMode&&<label>Email code<input name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" minLength={6} maxLength={10} required/></label>}
    {notice}<button className="primary" type="submit">{busy?'Please wait…':{signin:'Sign in',signup:'Create account',verify:'Verify email',forgot:'Send recovery code',recover:'Verify recovery code',password:'Save new password'}[mode]}</button>

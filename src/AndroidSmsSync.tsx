@@ -10,9 +10,10 @@ interface Props {
   update: (fn: (s: State) => State) => void;
   onClose?: () => void;
   onNotice?: (msg: string) => void;
+  onboarding?: boolean;
 }
 
-export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice }: Props) {
+export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice, onboarding }: Props) {
   const [permissionStatus, setPermissionStatus] = useState<'checking' | 'prompt' | 'granted' | 'denied' | 'unsupported'>('checking');
   const [scanning, setScanning] = useState(false);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
@@ -28,6 +29,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
         setPermissionStatus('unsupported');
       } else if (res.granted) {
         setPermissionStatus('granted');
+        if (onboarding) void startScan(true);
       } else {
         setPermissionStatus(res.status === 'denied' ? 'denied' : 'prompt');
       }
@@ -39,7 +41,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
     const res = await requestSmsPermission();
     if (res.granted) {
       setPermissionStatus('granted');
-      startScan();
+      startScan(!!onboarding);
     } else {
       setPermissionStatus('denied');
       setError('SMS permission was denied. You can continue by pasting SMS messages manually or enable permission in Android App Settings.');
@@ -181,7 +183,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onNotice
               <RefreshCw size={14} /> {state.prefs?.lastSmsScanTimestamp ? 'Rescan for New Messages' : 'Start Full Inbox Scan'}
             </button>
             <button disabled={scanning || permissionStatus !== 'granted'} onClick={()=>startScan(true)}>Rescan entire inbox</button>
-            <button disabled={scanning} onClick={onClose}>Close</button>
+            <button disabled={scanning} onClick={onClose}>{onboarding ? 'Continue to BirrX' : 'Close'}</button>
           </div>
           <small>Rescan entire inbox includes older supported messages. Existing transactions and edits are preserved; duplicates are skipped.</small>
         </div>
