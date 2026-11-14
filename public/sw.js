@@ -1,4 +1,4 @@
-const CACHE_NAME = 'birrx-pwa-v2';
+const CACHE_NAME = 'birrx-pwa-v3';
 
 const STATIC_PRECACHE = [
   '/',
@@ -10,7 +10,10 @@ const STATIC_PRECACHE = [
   '/icon-512.png',
   '/icon-maskable-192.png',
   '/icon-maskable-512.png',
-  '/apple-touch-icon.png'
+  '/apple-touch-icon.png',
+  '/birrx.svg',
+  '/birrx-light.svg',
+  '/birrx-dark.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -26,7 +29,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key !== CACHE_NAME) {
+          if (key.startsWith('birrx-pwa-') && key !== CACHE_NAME) {
             return caches.delete(key);
           }
         })
@@ -40,6 +43,10 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+
+  // Never cache account requests, API responses or third-party resources.
+  if (url.origin !== self.location.origin) return;
+  if (req.mode !== 'navigate' && !['script','style','image','font','manifest'].includes(req.destination)) return;
 
   // Skip dev server internals and browser extensions
   if (

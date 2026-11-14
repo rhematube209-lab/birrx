@@ -33,16 +33,21 @@ public class DeviceLockPlugin extends Plugin {
         locked=enabled;
         getActivity().runOnUiThread(()->render());
     }
+    private int dp(int value){return Math.round(value*getContext().getResources().getDisplayMetrics().density);}
     private void render() {
         if(enabled)getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         else getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
         if(enabled&&locked) {
             getBridge().getWebView().setVisibility(View.INVISIBLE);
             if(cover==null) {
-                LinearLayout panel=new LinearLayout(getContext());panel.setOrientation(LinearLayout.VERTICAL);panel.setGravity(android.view.Gravity.CENTER);panel.setPadding(40,40,40,40);panel.setBackgroundColor(android.graphics.Color.rgb(7,16,13));panel.setClickable(true);panel.setFocusable(true);
-                TextView brand=new TextView(getContext());brand.setText("BirrX");brand.setTextSize(32);brand.setTextColor(android.graphics.Color.rgb(223,243,182));panel.addView(brand);
-                TextView title=new TextView(getContext());title.setText("Your finances are locked");title.setTextSize(18);title.setTextColor(android.graphics.Color.WHITE);title.setPadding(0,30,0,24);panel.addView(title);
-                Button unlock=new Button(getContext());unlock.setText("Unlock BirrX");unlock.setOnClickListener(v->authenticate(null,"unlock"));panel.addView(unlock);
+                LinearLayout panel=new LinearLayout(getContext());panel.setOrientation(LinearLayout.VERTICAL);panel.setGravity(android.view.Gravity.CENTER);panel.setPadding(dp(28),dp(32),dp(28),dp(32));panel.setBackgroundColor(android.graphics.Color.rgb(7,16,13));panel.setClickable(true);panel.setFocusable(true);
+                android.widget.ImageView brand=new android.widget.ImageView(getContext());brand.setImageResource(R.drawable.birrx_lock_logo);brand.setContentDescription("BirrX");brand.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);panel.addView(brand,new LinearLayout.LayoutParams(dp(200),dp(75)));
+                TextView title=new TextView(getContext());title.setText("Welcome back");title.setTextSize(24);title.setTypeface(android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL));title.setTextColor(android.graphics.Color.rgb(237,245,239));title.setPadding(0,dp(32),0,dp(10));panel.addView(title);
+                TextView hint=new TextView(getContext());hint.setText("Unlock to see your finances.");hint.setTextSize(14);hint.setTextColor(android.graphics.Color.rgb(159,181,167));hint.setGravity(android.view.Gravity.CENTER);panel.addView(hint);
+                Button unlock=new Button(getContext());unlock.setText("Unlock BirrX");unlock.setAllCaps(false);unlock.setTextSize(15);unlock.setTextColor(android.graphics.Color.WHITE);unlock.setTypeface(android.graphics.Typeface.create("sans-serif-medium",android.graphics.Typeface.NORMAL));unlock.setBackgroundTintList(null);
+                android.graphics.drawable.GradientDrawable shape=new android.graphics.drawable.GradientDrawable();shape.setColor(android.graphics.Color.rgb(47,109,80));shape.setCornerRadius(dp(16));shape.setStroke(dp(1),android.graphics.Color.rgb(66,133,97));
+                unlock.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x33FFFFFF),shape,null));unlock.setElevation(dp(3));unlock.setPadding(dp(20),0,dp(20),0);
+                LinearLayout.LayoutParams buttonLayout=new LinearLayout.LayoutParams(dp(250),dp(54));buttonLayout.topMargin=dp(28);panel.addView(unlock,buttonLayout);unlock.setOnClickListener(v->authenticate(null,"unlock"));
                 cover=panel;getActivity().addContentView(cover,new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT));
             }
             cover.setVisibility(View.VISIBLE);

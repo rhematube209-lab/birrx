@@ -48,7 +48,7 @@ Set email OTP expiry to 10 minutes, and configure custom SMTP before public regi
 
 The BirrX project is connected locally through ignored `.env.local`. Email sign-in and registration are enabled. Turn off Confirm email in the project dashboard for immediate registration. Recovery email codes and SMTP can be configured separately. Environment values must also be configured in Vercel for hosted builds.
 
-A phone-width Ethiopian personal-finance app built with React, TypeScript, Vite, Tailwind CSS and IndexedDB. No server account or bank connection is required.
+A phone-width Ethiopian personal-finance app built with React, TypeScript, Vite, Tailwind CSS and IndexedDB. Email registration/sign-in requires internet. Financial records stay on this device; BirrX does not connect to bank accounts or execute payments.
 
 ## Run
 
@@ -184,7 +184,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Device integration limits
 
-SMS inbox reading, continuous background message processing, real device authentication/encrypted app lock and reliable closed-app stats delivery require native integration. The browser provides manual entry, CSV, pasted-message import, real permission-status checks, notification permission requests and receipt file/camera capture where supported. Camera/notification APIs may need HTTPS; a local-network HTTP page offers file selection and manual alternatives.
+The Android build includes SMS inbox access, incoming-message notifications and device-authenticated app lock. Continuous closed-app transaction parsing, record encryption and reliable closed-app stats delivery are not implemented. The browser provides manual entry, CSV, pasted-message import, real permission-status checks, notification permission requests and receipt file/camera capture where supported. Camera/notification APIs may need HTTPS; a local-network HTTP page offers file selection and manual alternatives.
 
 Android app lock uses system fingerprint or device screen-lock authentication. Its enablement is stored in native device preferences; enabling and disabling require device authentication. Native content is covered and screenshots are blocked while app lock is enabled. It locks on background and cold start. Android 11+ supports strong biometrics with screen-lock fallback; Android 7–10 uses the device credential prompt. App lock is unavailable in the web app and does not encrypt IndexedDB or exported files. Existing demo PIN settings no longer enable a lock; enable Device app lock in Settings. Stats scheduling is a saved demo preference. Reference rates are manual, not live. The interface is English; Amharic is a saved preference clearly marked as awaiting translation. No analytics, cloud sync, live banking or payment execution is included.
 
