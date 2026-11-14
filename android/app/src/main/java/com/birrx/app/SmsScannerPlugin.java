@@ -30,7 +30,7 @@ public class SmsScannerPlugin extends Plugin {
 
     private static final Set<String> SUPPORTED_SENDERS = new HashSet<>(Arrays.asList(
         "CBE", "BOA", "127", "994", "251994", "810", "TELEBIRR",
-        "AWASH", "AWASHBANK", "DASHEN", "DASHENBANK", "COOP", "COOPBANK",
+        "AWASH", "AWASHBANK", "AWASH_BANK", "DASHEN", "DASHENBANK", "COOP", "COOPBANK",
         "HIBRET", "NIB", "WEGAGEN", "ZEMEN", "CBEBIRR", "844", "AMHARA", "SIINQEE"
     ));
 

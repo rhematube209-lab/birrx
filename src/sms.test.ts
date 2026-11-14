@@ -136,9 +136,9 @@ describe('extended Ethiopian banking formats and review classification', () => {
     expect(service.reasonLabel).toBe('Service / Account Notice');
 
     const awash = classifySmsReview({ sender: 'AWASH', body: 'Dear Customer, your account was credited with ETB 500.00.' });
-    expect(awash.category).toBe('unsupported');
-    expect(awash.reason).toBe('unsupported_sender');
-    expect(awash.reasonLabel).toContain('Awash Bank');
+    expect(awash.category).toBe('action_required');
+    expect(awash.reason).toBe('missing_reference');
+    expect(awash.provider).toBe('Awash');
 
     const cbebirr = classifySmsReview({ sender: '844', body: 'You have paid 150 ETB to merchant.' });
     expect(cbebirr.category).toBe('unsupported');
@@ -161,8 +161,8 @@ describe('extended Ethiopian banking formats and review classification', () => {
     expect(previews[0].classification?.reason).toBe('otp_security');
 
     expect(previews[1].status).toBe('Needs review');
-    expect(previews[1].classification?.category).toBe('unsupported');
-    expect(previews[1].classification?.provider).toBe('Awash Bank');
+    expect(previews[1].classification?.category).toBe('action_required');
+    expect(previews[1].classification?.provider).toBe('Awash');
   });
 
   it('parses Telebirr agent cash-in deposit credited alert from 127', () => {

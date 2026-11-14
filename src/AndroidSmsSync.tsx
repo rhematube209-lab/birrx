@@ -106,7 +106,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onboardi
             <ShieldCheck size={28} className="shield-icon" />
             <div>
               <b>Your messages stay on your phone</b>
-              <small>Import transactions from CBE, BOA and Telebirr automatically.</small>
+              <small>Import transactions from CBE, BOA, Awash and Telebirr automatically.</small>
             </div>
           </div>
 

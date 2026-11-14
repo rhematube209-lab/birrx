@@ -350,12 +350,12 @@ describe('Scan regressions', () => {
     expect(promo?.reason).toBe('promotional');
     expect(promo?.reasonLabel).toBe('Promotion / Marketing');
 
-    const awash = result.state.unmatched.find(u => u.category === 'unsupported');
+    const awash = result.state.unmatched.find(u => u.sender === 'AWASH');
     expect(awash).toBeDefined();
-    expect(awash?.reason).toBe('unsupported_sender');
-    expect(awash?.reasonLabel).toContain('Awash Bank');
+    expect(awash?.reason).toBe('missing_reference');
+    expect(awash?.provider).toBe('Awash');
 
-    const actionReq = result.state.unmatched.find(u => u.category === 'action_required');
+    const actionReq = result.state.unmatched.find(u => u.category === 'action_required' && u.sender === 'CBE');
     expect(actionReq).toBeDefined();
     expect(actionReq?.reason).toBe('format_unrecognized');
 

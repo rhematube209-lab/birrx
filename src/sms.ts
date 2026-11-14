@@ -8,12 +8,9 @@ export type SmsReviewReason='otp_security'|'promotional'|'service_notice'|'unsup
 export interface SmsReviewClassification{reason:SmsReviewReason;reasonLabel:string;actionHint:string;category:'security'|'promo'|'service'|'unsupported'|'action_required';provider?:string;sender:string;}
 export type SmsPreview={message:number;status:'Ready'|'Update'|'Duplicate'|'Needs review';parsed?:ParsedSms;issue?:string;classification?:SmsReviewClassification};
 const amount='([\\d,]+(?:\\.\\d{1,2})?)(?![\\d,]|\\.\\d)';
-const supported=new Set(['CBE','BOA','127','994','251994','810','TELEBIRR']);
+const supported=new Set(['AWASH','AWASHBANK','AWASH_BANK','CBE','BOA','127','994','251994','810','TELEBIRR']);
 
 export const KNOWN_UNSUPPORTED_SENDERS:Record<string,{name:string;kind:'bank'|'wallet'}>={
- 'AWASH':{name:'Awash Bank',kind:'bank'},
- 'AWASHBANK':{name:'Awash Bank',kind:'bank'},
- 'AWASH_BANK':{name:'Awash Bank',kind:'bank'},
  'DASHEN':{name:'Dashen Bank',kind:'bank'},
  'DASHENBANK':{name:'Dashen Bank',kind:'bank'},
  'DASHEN_BANK':{name:'Dashen Bank',kind:'bank'},
@@ -83,17 +80,17 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    reasonLabel:'Security Code / OTP',
    actionHint:'Temporary verification code containing no financial transaction. Safe to dismiss.',
    category:'security',
-   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr',
+   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
- if(/recharge and get|special (?:offer|package)|100% bonus|bonus airtime|cashback|congratulations|happy (?:new year|holiday|eid)|lottery|spin & win|lucky draw|telebirr superapp|buy 1 get 1|free (?:bonus|airtime|MB|GB|min)/i.test(body)&&!/transaction number is|has occurred on your account|(?:was|has been) (?:debited|credited) with/i.test(body)){
+ if(/recharge and get|special (?:offer|package)|100% bonus|bonus airtime|cashback|congratulations|happy (?:new year|holiday|eid)|lottery|spin & win|lucky draw|telebirr superapp|buy 1 get 1|free (?:bonus|airtime|MB|GB|min)/i.test(body)&&!/transaction number is|has occurred on your account|(?:was|has been) (?:debited|credited) with|your payment of|transferred to other bank|has been credited to your account/i.test(body)){
   return {
    reason:'promotional',
    reasonLabel:'Promotion / Marketing',
    actionHint:'Promotional announcement with no financial transaction. Safe to dismiss.',
    category:'promo',
-   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr',
+   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
@@ -103,7 +100,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    reasonLabel:'Service / Account Notice',
    actionHint:'Account notice or settings change. No transaction occurred.',
    category:'service',
-   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr',
+   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
@@ -123,7 +120,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    reasonLabel:'Different Account Mask',
    actionHint:'Message belongs to a different unlinked account mask.',
    category:'action_required',
-   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr',
+   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
@@ -133,7 +130,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    reasonLabel:'Missing Message Date',
    actionHint:'Supply the Gregorian receipt date to parse this message.',
    category:'action_required',
-   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr',
+   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
@@ -143,7 +140,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    reasonLabel:'Missing Reference / Slip',
    actionHint:'Financial alert missing a slip link or transaction number.',
    category:'action_required',
-   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr',
+   provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
@@ -152,7 +149,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
   reasonLabel:'Unrecognized Banking Format',
   actionHint:issue||'Format not recognized by parser. Review manually or enter as transaction.',
   category:'action_required',
-  provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr',
+  provider:sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
   sender
  };
 }
@@ -198,13 +195,26 @@ const planKey=(name:string)=>name.toLowerCase().replace(/[^a-z0-9.]/g,'');
 export function parseSms(e:SmsEnvelope):ParsedSms{
  const sender=senderId(e.sender);if(!supported.has(sender))throw Error('Unsupported SMS sender.');
  const body=normalizeSms(e.body);
- let provider=sender==='CBE'?'CBE':sender==='BOA'?'BOA':'Telebirr';
- if(/Thank you for using telebirr/i.test(body))provider='Telebirr';
+ let provider=sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr';
+ if(provider==='Awash'){}
+ else if(/Thank you for using telebirr/i.test(body))provider='Telebirr';
  else if(/Thanks for Banking with CBE/i.test(body))provider='CBE';
  else if(/Bank of Abyssinia\b/i.test(body))provider='BOA';
  let when=metadata(e),ref='',principal:number|undefined,person='',name='',category='Other',mask:string|undefined,balance:number|undefined;
  const feeParts={service:0,vat:0,disaster:0};
- if(provider==='BOA'){
+ if(provider==='Awash'){
+  const receipt=body.match(/https:\/\/awashpay\.awashbank\.com:8225\/([A-Za-z0-9-]+)/i);
+  if(!receipt)throw Error('No supported transaction reference found.');
+  ref=receipt[1];
+  const payment=body.match(new RegExp('your payment of\\s*'+amount+'\\s+ETB to\\s+(.+?)\\s+is successful for\\s+(.+?)\\. Ref\\s+([A-Za-z0-9]+)\\s+on\\s+([^.]*)','i'));
+  const transfer=body.match(new RegExp('You have transferred to other bank ETB\\s*'+amount+'\\s+To\\s+[\\d*]+\\s*\\(([^)]+)\\)\\s+In\\s+(.+?)\\s+with charge of\\s*'+amount+'\\s+VAT:\\s*'+amount+'\\s+EDRRF\\s*'+amount+'\\s+ETB','i'));
+  const credit=body.match(new RegExp('ETB\\s*'+amount+'\\s+has been credited to your account from\\s+(.+?)\\s+on\\s*:\\s*(.+?)\\s+with Txn ID:','i'));
+  if(payment){principal=-money(payment[1]);person=payment[2].trim();name='Payment to '+person;when=noticeDate(payment[5]);category=/parking/i.test(payment[3])?'Transport':'Other';}
+  else if(transfer){principal=-money(transfer[1]);person=transfer[2].trim();name='Transfer to '+person;feeParts.service=money(transfer[4]);feeParts.vat=money(transfer[5]);feeParts.disaster=money(transfer[6]);}
+  else if(credit){principal=money(credit[1]);person=credit[2].trim();name='Received from '+person;category='Income';when=noticeDate(credit[3]);}
+  else throw Error('Awash message format needs review.');
+  balance=findMoney(body,'Your available Balance is(?: now)?\\s+ETB');
+ }else if(provider==='BOA'){
   if(!/Bank of Abyssinia\b/i.test(body))throw Error('BOA message signature is missing.');
   const m=body.match(new RegExp('your account\\s+([\\d*]+)\\s+(?:was|has been) (debited|credited) with ETB\\s*'+amount,'i'));
   if(!m)throw Error('BOA message format needs review.');
@@ -302,7 +312,8 @@ export function previewSmsText(body:string,sender:string,date:string,time:string
  if(/^DEMO\s*\|/.test(body.trim()))return legacyPreview(body,'Paste SMS',state).map(p=>({message:p.row,status:p.status==='Ready'?'Ready':p.status==='Duplicate'?'Duplicate':'Needs review',issue:p.record?undefined:p.status,parsed:p.record?{provider:p.record.bank,identity:p.record.bank+'|'+p.record.ref,at:p.record.date,date:p.record.date,time:p.record.time,records:[p.record]}:undefined}));
  return previewSms(splitSms(body).map(text=>{
   let s=sender;
-  if(/Thank you for using telebirr/i.test(text))s='127';
+  if(/https:\/\/awashpay\.awashbank\.com/i.test(text))s='AWASH';
+  else if(/Thank you for using telebirr/i.test(text))s='127';
   else if(/Thanks for Banking with CBE/i.test(text))s='CBE';
   else if(/Bank of Abyssinia\b/i.test(text))s='BOA';
   return {sender:s,body:text,date:date||undefined,time:time||undefined};

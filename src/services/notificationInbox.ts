@@ -10,3 +10,9 @@ function write(items:InboxNotification[]){try{localStorage.setItem(storageKey,JS
 export function addInboxNotification(n:InboxNotification){if(eatDate(n.at)<eatDate(new Date().toISOString())||(n.target.kind==='transaction'&&n.target.id&&dismissedTransactions().includes(n.target.id)))return;const items=read();write([...items.filter(i=>i.key!==n.key&&!(n.target.kind==='transaction'&&n.target.id&&i.target.kind==='transaction'&&i.target.id===n.target.id)),n]);}
 export function todayNotifications(now=new Date()){const items=read(now);try{localStorage.setItem(storageKey,JSON.stringify(items));}catch{}return items.filter(n=>eatDate(n.at)===eatDate(now.toISOString())&&Date.parse(n.at)<=now.valueOf()).sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));}
 export function syncInboxReminders(items:InboxNotification[],now=new Date()){write([...read(now).filter(n=>!n.scheduled||Date.parse(n.at)<=now.valueOf()),...items]);}
+
+const readKey='birrx-notifications-seen';
+function seenKeys():Set<string>{try{const saved=JSON.parse(localStorage.getItem(readKey)||'null');if(saved?.day===eatDate(new Date().toISOString())&&Array.isArray(saved.keys))return new Set(saved.keys);}catch{}return new Set();}
+const seenIdentity=(n:InboxNotification)=>n.target.kind==='transaction'&&n.target.id?'transaction:'+n.target.id:n.key+'|'+n.at;
+export function unreadNotificationCount(){const seen=seenKeys();return todayNotifications().filter(n=>!seen.has(seenIdentity(n))).length;}
+export function markNotificationsRead(){const keys=todayNotifications().map(seenIdentity);try{localStorage.setItem(readKey,JSON.stringify({day:eatDate(new Date().toISOString()),keys}));window.dispatchEvent(new Event('birrx-notifications-read'));}catch{}}

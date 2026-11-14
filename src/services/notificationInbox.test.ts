@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import {it,expect,vi,beforeEach,afterEach} from 'vitest';
-import {addInboxNotification,todayNotifications,syncInboxReminders} from './notificationInbox';
+import {addInboxNotification,todayNotifications,syncInboxReminders,unreadNotificationCount,markNotificationsRead} from './notificationInbox';
 beforeEach(()=>{localStorage.clear();vi.useFakeTimers();vi.setSystemTime(new Date('2026-11-13T20:59:00Z'));});afterEach(()=>vi.useRealTimers());
 it('clears yesterday at EAT midnight and retains today across reads',()=>{
  addInboxNotification({key:'one',title:'Alert',body:'Review',at:new Date().toISOString(),target:{kind:'review'}});
@@ -10,4 +10,11 @@ it('clears yesterday at EAT midnight and retains today across reads',()=>{
 it('shows scheduled reminders only when due and removes canceled future reminders',()=>{
  const item={key:'bill',title:'Payment',body:'Due',at:'2026-11-13T20:59:30Z',target:{kind:'bill' as const},scheduled:true};
  syncInboxReminders([item]);expect(todayNotifications()).toEqual([]);syncInboxReminders([]);vi.advanceTimersByTime(31000);expect(todayNotifications()).toEqual([]);
+});
+
+it('marks existing notifications read but badges a later alert, preserving state on repeat reads',()=>{
+ const alert={key:'one',title:'Activity',body:'Review',at:new Date().toISOString(),target:{kind:'transaction' as const,id:'tx1'}};
+ addInboxNotification(alert);expect(unreadNotificationCount()).toBe(1);markNotificationsRead();expect(unreadNotificationCount()).toBe(0);
+ addInboxNotification({...alert,key:'native-one'});expect(unreadNotificationCount()).toBe(0);
+ addInboxNotification({...alert,key:'two',target:{kind:'transaction',id:'tx2'}});expect(unreadNotificationCount()).toBe(1);
 });

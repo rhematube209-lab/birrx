@@ -4,7 +4,7 @@ import { scanNativeInbox, type RawSmsMessage } from './androidSmsBridge';
 
 export const SUPPORTED_SENDERS = new Set([
   'CBE', 'BOA', '127', '994', '251994', '810', 'TELEBIRR',
-  'AWASH', 'AWASHBANK', 'DASHEN', 'DASHENBANK', 'COOP', 'COOPBANK',
+  'AWASH', 'AWASHBANK', 'AWASH_BANK', 'DASHEN', 'DASHENBANK', 'COOP', 'COOPBANK',
   'HIBRET', 'NIB', 'WEGAGEN', 'ZEMEN', 'CBEBIRR', '844', 'AMHARA', 'SIINQEE'
 ]);
 
@@ -18,7 +18,7 @@ export const isSupportedSender = (sender: string): boolean => {
 
 export const OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours safe overlap window
 export const BATCH_SIZE = 50;
-export const SMS_PARSER_VERSION = '5';
+export const SMS_PARSER_VERSION = '6';
 
 export interface ScanProgress {
   stage: 'idle' | 'scanning' | 'processing' | 'done' | 'stopped' | 'error';
