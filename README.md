@@ -186,7 +186,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 SMS inbox reading, continuous background message processing, real device authentication/encrypted app lock and reliable closed-app stats delivery require native integration. The browser provides manual entry, CSV, pasted-message import, real permission-status checks, notification permission requests and receipt file/camera capture where supported. Camera/notification APIs may need HTTPS; a local-network HTTP page offers file selection and manual alternatives.
 
-App lock is explicitly a demo privacy cover with PIN **2468**, not encryption. Stats scheduling is a saved demo preference. Reference rates are manual, not live. The interface is English; Amharic is a saved preference clearly marked as awaiting translation. No analytics, cloud sync, live banking or payment execution is included.
+Android app lock uses system fingerprint or device screen-lock authentication. Its enablement is stored in native device preferences; enabling and disabling require device authentication. Native content is covered and screenshots are blocked while app lock is enabled. It locks on background and cold start. Android 11+ supports strong biometrics with screen-lock fallback; Android 7–10 uses the device credential prompt. App lock is unavailable in the web app and does not encrypt IndexedDB or exported files. Existing demo PIN settings no longer enable a lock; enable Device app lock in Settings. Stats scheduling is a saved demo preference. Reference rates are manual, not live. The interface is English; Amharic is a saved preference clearly marked as awaiting translation. No analytics, cloud sync, live banking or payment execution is included.
 
 ### Android notifications
 

@@ -13,11 +13,13 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(SmsScannerPlugin.class);
+        registerPlugin(DeviceLockPlugin.class);
         super.onCreate(savedInstanceState);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             private boolean pending = false;
             @Override
             public void handleOnBackPressed() {
+                if(DeviceLockPlugin.isLocked()){moveTaskToBack(true);return;}
                 if (pending) return;
                 pending = true;
                 getBridge().getWebView().evaluateJavascript(
