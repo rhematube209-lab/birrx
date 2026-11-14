@@ -4,9 +4,11 @@ import {isAndroidNative} from './androidSmsBridge';
 import {reminderPlan,milestoneEvents,enabled,type NotificationTarget} from './notificationPlan';
 import {addInboxNotification,syncInboxReminders} from './notificationInbox';
 import type {State,Tx} from '../domain';
-const bridge=registerPlugin<{setNotificationEnabled(o:{enabled:boolean}):Promise<void>;consumeNotificationAction():Promise<{timestamp?:number;bank?:string;reference?:string}>;getNotificationHistory():Promise<{items:{at:number;timestamp:number;bank:string;reference?:string}[]}>}>('SmsScanner');
+const bridge=registerPlugin<{setNotificationEnabled(o:{enabled:boolean;hidden:boolean}):Promise<void>;getNotificationDisplayStatus():Promise<{allowed:boolean;importance?:number;sound?:boolean;doNotDisturb:boolean}>;openNotificationSettings():Promise<void>;consumeNotificationAction():Promise<{timestamp?:number;bank?:string;reference?:string}>;getNotificationHistory():Promise<{items:{at:number;timestamp:number;bank:string;reference?:string}[]}>}>('SmsScanner');
 export const notificationPermission=async()=>isAndroidNative()?(await LocalNotifications.checkPermissions()).display:typeof Notification==='undefined'?'unsupported':Notification.permission;
 export async function requestNotificationPermission(){return isAndroidNative()?(await LocalNotifications.requestPermissions()).display:typeof Notification==='undefined'?'unsupported':await Notification.requestPermission();}
+export const notificationDisplayStatus=()=>bridge.getNotificationDisplayStatus();
+export const openNotificationDisplaySettings=()=>bridge.openNotificationSettings();
 export const consumeSmsNotification=()=>bridge.consumeNotificationAction();
 export async function listenNotificationActions(action:(target:NotificationTarget)=>void){
  if(!isAndroidNative())return {remove:async()=>{}};
@@ -18,7 +20,7 @@ let reminderSignature='';
 export function syncNotifications(s:State,onEvents:(events:string[])=>void,onError:(message:string)=>void){
  queue=queue.then(async()=>{
   if(!isAndroidNative())return;
-  await bridge.setNotificationEnabled({enabled:enabled(s,'transactions')});
+  await bridge.setNotificationEnabled({enabled:enabled(s,'transactions'),hidden:s.hidden});
   const reminders=reminderPlan(s),signature=JSON.stringify(reminders);
   if(signature!==reminderSignature){
   const pending=await LocalNotifications.getPending();
@@ -40,8 +42,9 @@ export function syncNotifications(s:State,onEvents:(events:string[])=>void,onErr
 export async function notifyNewTransactions(s:State,records:Tx[]){
  if(!isAndroidNative()||!enabled(s,'transactions')||!records.length||await notificationPermission()!=='granted')return;
  const last=records[records.length-1];
- addInboxNotification({key:'transaction:'+last.id,title:'New '+(last.amt<0?'outgoing':'incoming')+' transaction',body:last.bank+' activity is ready to categorize.',at:new Date().toISOString(),target:{kind:'transaction',id:last.id}});
- await LocalNotifications.schedule({notifications:[{id:30000,channelId:'birrx-transactions-v2',title:records.length===1?'New '+(last.amt<0?'outgoing':'incoming')+' transaction':'New transactions recorded',body:records.length===1?`${last.bank} activity is ready to categorize. Tap to review.`:`${records.length} transactions are ready to categorize. Tap to review the latest.`,extra:{kind:'transaction',id:last.id},isExactNotification:false}]});
+ const title=transactionAlertTitle(last,s.hidden);
+ addInboxNotification({key:'transaction:'+last.id,title,body:'Tap to categorize',at:new Date().toISOString(),target:{kind:'transaction',id:last.id}});
+ await LocalNotifications.schedule({notifications:[{id:30000,channelId:'birrx-transactions-v2',title:records.length===1?title:'New transactions recorded',body:'Tap to categorize',extra:{kind:'transaction',id:last.id},isExactNotification:false}]});
 }
 export async function testNotification(kind:'transactions'|'plans'|'goals'|'recurring'){
  const examples:Record<typeof kind,{title:string;body:string;target:NotificationTarget}>={
@@ -62,6 +65,8 @@ export async function syncNativeNotificationInbox(s:State){
  for(const item of items){
   const matches=s.tx.filter(r=>r.bank===item.bank&&r.sms?.role==='principal'&&(item.reference?r.ref===item.reference:Math.abs(new Date(r.date+'T'+(r.time||'00:00:00')+'+03:00').valueOf()-item.timestamp)<600000));
   const tx=matches.length===1?matches[0]:undefined;
-  addInboxNotification({key:'sms:'+item.bank+':'+item.timestamp,title:'New '+item.bank+' activity',body:'Tap to review and categorize your transaction.',at:new Date(item.at).toISOString(),target:tx?{kind:'transaction',id:tx.id}:{kind:'review'}});
+  addInboxNotification({key:'sms:'+item.bank+':'+item.timestamp,title:tx?transactionAlertTitle(tx,s.hidden):'New '+item.bank+' activity',body:'Tap to categorize',at:new Date(item.at).toISOString(),target:tx?{kind:'transaction',id:tx.id}:{kind:'review'}});
  }
 }
+
+export function transactionAlertTitle(tx:Tx,hidden:boolean){const amount=hidden?(tx.amt<0?'Outgoing transaction':'Incoming transaction'):(tx.amt<0?'-':'+')+(Math.abs(tx.amt)/100).toLocaleString('en-US',{maximumFractionDigits:2})+' ETB';return amount+(tx.person?' · '+(tx.amt<0?'to ':'from ')+tx.person:' · '+tx.bank);}

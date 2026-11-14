@@ -71,8 +71,8 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
                 int id = (sender + timestamp).hashCode() & 0x7fffffff;
                 android.app.PendingIntent pending = android.app.PendingIntent.getActivity(context, id, launch, android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_IMMUTABLE);
                 manager.notify("birrx-sms", id, new androidx.core.app.NotificationCompat.Builder(context, NotificationChannels.TRANSACTIONS)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("New " + bank + " activity")
-                    .setContentText("Tap to sync and categorize your transaction.").setContentIntent(pending)
+                    .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(TransactionAlert.title(fullBody.toString(), bank, context.getSharedPreferences("birrx-notifications", 0).getBoolean("hidden", true)))
+                    .setContentText("Tap to categorize").setContentIntent(pending)
                     .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH).setDefaults(android.app.Notification.DEFAULT_ALL)
                     .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true).build());
             }

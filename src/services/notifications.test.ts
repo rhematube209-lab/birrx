@@ -29,8 +29,13 @@ it('sends distinct test messages and routes for each notification type',async()=
  expect(messages.map(n=>n.extra)).toEqual([{kind:'transaction'},{kind:'plan',id:'Plan'},{kind:'plan',id:'Goals'},{kind:'bill'}]);
 });
 it('describes the direction and account of a new transaction without exposing its amount',async()=>{
- const s=fresh();s.prefs.notify_transactions='On';const tx={...s.tx[0],bank:'CBE',amt:-123456};
+ const s=fresh();s.hidden=true;s.prefs.notify_transactions='On';const tx={...s.tx[0],bank:'CBE',amt:-123456};
  const {notifyNewTransactions}=await import('./notifications');await notifyNewTransactions(s,[tx]);
  const message=api.schedule.mock.calls[0][0].notifications[0];
- expect(message.title).toBe('New outgoing transaction');expect(message.body).toContain('CBE');expect(JSON.stringify(message)).not.toContain('123456');expect(message.extra).toEqual({kind:'transaction',id:tx.id});
+ expect(message.title).toContain('Outgoing transaction');expect(message.body).toBe('Tap to categorize');expect(JSON.stringify(message)).not.toContain('123456');expect(message.extra).toEqual({kind:'transaction',id:tx.id});
+});
+
+it('formats the amount and recipient and respects hidden amounts',async()=>{
+ const {transactionAlertTitle}=await import('./notifications');const tx={...fresh().tx[0],amt:-39000,person:'Example Recipient'};
+ expect(transactionAlertTitle(tx,false)).toBe('-390 ETB · to Example Recipient');expect(transactionAlertTitle(tx,true)).not.toContain('390');
 });

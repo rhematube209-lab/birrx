@@ -20,7 +20,7 @@ import {addInboxNotification} from './services/notificationInbox';
 import {QuickCategorize} from './QuickCategorize';
 import {BrandedSelect} from './BrandedSelect';
 import {filterActivity,amountBound} from './activityFilters';
-import {syncNotifications,listenNotificationActions,consumeSmsNotification,notifyNewTransactions,syncNativeNotificationInbox} from './services/notifications';
+import {syncNotifications,listenNotificationActions,consumeSmsNotification,notifyNewTransactions,syncNativeNotificationInbox,transactionAlertTitle} from './services/notifications';
 import type {NotificationTarget} from './services/notificationPlan';
 const tabs=['People','Transactions','Home','Plan','Profile'];
 const icons=[Users,ArrowLeftRight,House,ClipboardList,UserRound];
@@ -112,7 +112,7 @@ export default function App(){
           if(ready.length>0){
             const next=commitSms(active.current,previews);
             update(()=>next);
-            for(const item of ready){const tx=item.parsed?.records.find(r=>r.sms?.role==='principal');if(tx)addInboxNotification({key:'transaction:'+tx.id,title:'New '+(tx.amt<0?'outgoing':'incoming')+' transaction',body:tx.bank+' activity is ready to categorize.',at:new Date().toISOString(),target:{kind:'transaction',id:next.tx.find(r=>r.bank===tx.bank&&r.ref===tx.ref)?.id}});}
+            for(const item of ready){const tx=item.parsed?.records.find(r=>r.sms?.role==='principal');if(tx)addInboxNotification({key:'transaction:'+tx.id,title:transactionAlertTitle(tx,next.hidden),body:'Tap to categorize',at:new Date().toISOString(),target:{kind:'transaction',id:next.tx.find(r=>r.bank===tx.bank&&r.ref===tx.ref)?.id}});}
 
           } else if(previews.some(p=>p.status==='Needs review')) {
             runInboxScan(active.current,{getState:()=>active.current!,onBatch:next=>update(()=>next),clearDemoData:true,signal:abort.signal}).catch(()=>{});

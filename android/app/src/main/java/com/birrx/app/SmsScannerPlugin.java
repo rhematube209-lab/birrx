@@ -38,7 +38,32 @@ public class SmsScannerPlugin extends Plugin {
 
     @PluginMethod
     public void setNotificationEnabled(PluginCall call) {
-        getContext().getSharedPreferences("birrx-notifications", 0).edit().putBoolean("transactions", call.getBoolean("enabled", false)).apply();
+        getContext().getSharedPreferences("birrx-notifications", 0).edit().putBoolean("transactions", call.getBoolean("enabled", false)).putBoolean("hidden", call.getBoolean("hidden", true)).apply();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getNotificationDisplayStatus(PluginCall call) {
+        NotificationChannels.ensure(getContext());
+        android.app.NotificationManager manager = (android.app.NotificationManager) getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE);
+        JSObject result = new JSObject();
+        result.put("allowed", androidx.core.app.NotificationManagerCompat.from(getContext()).areNotificationsEnabled());
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            android.app.NotificationChannel channel = manager.getNotificationChannel(NotificationChannels.TRANSACTIONS);
+            result.put("importance", channel == null ? 0 : channel.getImportance());
+            result.put("sound", channel != null && channel.getSound() != null);
+        }
+        result.put("doNotDisturb", manager.getCurrentInterruptionFilter() != android.app.NotificationManager.INTERRUPTION_FILTER_ALL);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
+        intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+        intent.putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, NotificationChannels.TRANSACTIONS);
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(intent);
         call.resolve();
     }
 
