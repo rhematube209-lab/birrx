@@ -160,9 +160,9 @@ export function normalizeSms(body:string){return body
  .replace(/\\([*:.\/])/g,'$1').replace(/\[([^\]]*)\]\((https?:[^)]+)\)/g,'$2')
  .replace(/\\\s*(?:\r?\n|$)/g,'\n').replace(/\s+/g,' ').trim();}
 export function splitSms(body:string){
- const clean=normalizeSms(body).replace(/^["'`\s]+|["'`\s]+$/g,'').trim();
+ const clean=normalizeSms(body).replace(/\[\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2} [AP]M\]\s*[^:]+:\s*/g,'').replace(/^["'`\s]+|["'`\s]+$/g,'').trim();
  return clean
-  .split(/(?=Dear\s+(?:customer\b|[A-Za-z]))/i)
+  .split(/(?=Dear\s+(?:customer\b|[A-Za-z])|ውድ)/i)
   .map(s=>s.replace(/^["'`\s]+|["'`\s]+$/g,'').trim())
   .filter(s=>s.length>=15&&/[a-zA-Z0-9]/.test(s));
 }
@@ -191,10 +191,35 @@ function packageDetails(body:string):PackageNotice{
 }
 const planKey=(name:string)=>name.toLowerCase().replace(/[^a-z0-9.]/g,'');
 
+// Convert only the verified Amharic templates into the existing transient parser format.
+function amharicTelebirr(body:string):string|undefined{
+ if(!/በቴሌብር\s+ስለተገለገሉ\s+እናመሰግናለን/.test(body))return;
+ if(/ያለብዎት\s+የብድር\s+መጠን/.test(body))return 'Your outstanding telebirr credit is overdue. Thank you for using telebirr';
+ const reference=body.match(/የ(?:ቴሌብር\s+)?ሂሳብ\s+እንቅስቃሴ\s+ቁጥርዎ\s+([A-Za-z0-9-]+)/)?.[1];
+ const sent=body.match(new RegExp('ወደ\\s+(.+?)\\s*\\([+\\d*]+\\)\\s*'+amount+'\\s+ብር\\s+በ\\s+(\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2})\\s+ልከዋል'));
+ const incoming=body.match(new RegExp('ከ\\s+(.+?)\\s*\\([+\\d*]+\\)\\s*'+amount+'\\s+ብር\\s+በ\\s+(\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2})\\s+ተቀብለዋል'));
+ const bankOut=body.match(new RegExp('ለ\\s+Commercial Bank of Ethiopia\\s+አካውንት\\s+ቁጥር\\s+[\\d*]+\\s+'+amount+'\\s+ብር\\s+በቀን\\s+(\\d{2}/\\d{2}/\\d{4} \\d{2}:\\d{2}:\\d{2})\\s+በተሳካ ሁኔታ አስተላልፈዋል'));
+ const bankIn=body.match(new RegExp('በግብይት ቁጥር\\s+([A-Za-z0-9-]+)\\s+በ(\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}),\\s*'+amount+'\\s+ብር\\s+ከ Commercial Bank of Ethiopia ወደ ቴሌብር አካውንትዎ'));
+ let text='';
+ if(sent&&reference)text=`You have transferred ETB ${sent[2]} to ${sent[1]} on ${sent[3]}. Your transaction number is ${reference}.`;
+ else if(incoming&&reference)text=`You have received ETB ${incoming[2]} from ${incoming[1]} on ${incoming[3]}. Your transaction number is ${reference}.`;
+ else if(bankOut&&reference)text=`You have transferred ETB ${bankOut[1]} successfully from your telebirr account 0000 to Commercial Bank of Ethiopia account number 0000 on ${bankOut[2]}. Your telebirr transaction number is ${reference}.`;
+ else if(bankIn)text=`You have received ETB ${bankIn[3]} by transaction number ${bankIn[1]} on ${bankIn[2]} from Commercial Bank of Ethiopia to your telebirr Account.`;
+ else return;
+ const service=body.match(new RegExp('የአገልግሎት ክፍያው\\s+'+amount+'\\s+ብር'));
+ const vat=body.match(new RegExp('የአገልግሎት ክፍያው\\s+15% VAT\\s+'+amount+'\\s+ብር'));
+ if(/የአገልግሎት ክፍያው/.test(body)&&(!service||!vat))throw Error('Telebirr fee format needs review.');
+ if(service&&vat)text+=` The service fee is ETB ${service[1]} and 15% VAT on the service fee is ETB ${vat[1]}.`;
+ const balance=body.match(new RegExp('ያለዎት ቀሪ ሂሳብ\\s+'+amount+'\\s+ብር'))||body.match(new RegExp('ያሎት ቀሪ ሂሳብ\\s+'+amount+'\\s+ብር'));
+ if(balance)text+=` Your current balance is ETB ${balance[1]}.`;
+ return text+' Thank you for using telebirr';
+}
+
 // No network calls: receipt links supply identities only. Message text never leaves this parser.
 export function parseSms(e:SmsEnvelope):ParsedSms{
  const sender=senderId(e.sender);if(!supported.has(sender))throw Error('Unsupported SMS sender.');
- const body=normalizeSms(e.body);
+ const normalized=normalizeSms(e.body);
+ const body=['127','994','251994','810','TELEBIRR'].includes(sender)?amharicTelebirr(normalized)||normalized:normalized;
  let provider=sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr';
  if(provider==='Awash'){}
  else if(/Thank you for using telebirr/i.test(body))provider='Telebirr';
@@ -313,7 +338,7 @@ export function previewSmsText(body:string,sender:string,date:string,time:string
  return previewSms(splitSms(body).map(text=>{
   let s=sender;
   if(/https:\/\/awashpay\.awashbank\.com/i.test(text))s='AWASH';
-  else if(/Thank you for using telebirr/i.test(text))s='127';
+  else if(/Thank you for using telebirr|በቴሌብር\s+ስለተገለገሉ/i.test(text))s='127';
   else if(/Thanks for Banking with CBE/i.test(text))s='CBE';
   else if(/Bank of Abyssinia\b/i.test(text))s='BOA';
   return {sender:s,body:text,date:date||undefined,time:time||undefined};

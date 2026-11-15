@@ -19,17 +19,20 @@ import androidx.activity.result.ActivityResult;
 @CapacitorPlugin(name="DeviceLock")
 public class DeviceLockPlugin extends Plugin {
     private static DeviceLockPlugin instance;
-    private boolean enabled, locked, authenticating;
+    private boolean enabled, locked, authenticating, resumeUnlocked;
+    private long backgroundAt;
+    private int delaySeconds;
     private View cover;
     private PluginCall pending;
     private String action;
     private CancellationSignal cancellation;
     public static boolean isLocked() { return instance != null && instance.enabled && instance.locked; }
     private KeyguardManager keyguard() { return (KeyguardManager)getContext().getSystemService(Context.KEYGUARD_SERVICE); }
-    private JSObject status() { JSObject result=new JSObject();result.put("enabled",enabled);result.put("locked",locked);result.put("available",keyguard().isDeviceSecure());return result; }
+    private JSObject status() { JSObject result=new JSObject();result.put("delaySeconds",delaySeconds);result.put("enabled",enabled);result.put("locked",locked);result.put("available",keyguard().isDeviceSecure());return result; }
     @Override public void load() {
         instance=this;
         enabled=getContext().getSharedPreferences("birrx-security",0).getBoolean("enabled",false);
+        delaySeconds=getContext().getSharedPreferences("birrx-security",0).getInt("delaySeconds",0);
         locked=enabled;
         getActivity().runOnUiThread(()->render());
     }
@@ -57,12 +60,20 @@ public class DeviceLockPlugin extends Plugin {
         }
         notifyListeners("lockStateChanged",status());
     }
-    @Override protected void handleOnPause() { if(enabled){locked=true;render();} }
-    @Override protected void handleOnResume() { render(); }
+    @Override protected void handleOnPause() { if(enabled){resumeUnlocked=!locked&&!authenticating;backgroundAt=android.os.SystemClock.elapsedRealtime();locked=true;render();} }
+    @Override protected void handleOnResume() {
+        if(enabled&&backgroundAt>0&&resumeUnlocked&&delaySeconds>0&&android.os.SystemClock.elapsedRealtime()-backgroundAt<delaySeconds*1000L)locked=false;
+        backgroundAt=0;resumeUnlocked=false;render();
+    }
     @Override protected void handleOnDestroy() { if(cancellation!=null)cancellation.cancel();if(instance==this)instance=null; }
     @PluginMethod public void getStatus(PluginCall call) { call.resolve(status()); }
     @PluginMethod public void setEnabled(PluginCall call) { getActivity().runOnUiThread(()->authenticate(call,call.getBoolean("enabled",false)?"enable":"disable")); }
-    @PluginMethod public void lockNow(PluginCall call) { getActivity().runOnUiThread(()->{if(enabled){locked=true;render();}call.resolve(status());}); }
+    @PluginMethod public void setAutoLockDelay(PluginCall call) {
+        int seconds=call.getInt("seconds",0);
+        if(seconds!=0&&seconds!=30&&seconds!=60&&seconds!=300&&seconds!=900){call.reject("Invalid auto-lock delay.");return;}
+        getActivity().runOnUiThread(()->{if(enabled&&locked){call.reject("Unlock BirrX first.");return;}delaySeconds=seconds;getContext().getSharedPreferences("birrx-security",0).edit().putInt("delaySeconds",seconds).apply();call.resolve(status());});
+    }
+    @PluginMethod public void lockNow(PluginCall call) { getActivity().runOnUiThread(()->{if(enabled){resumeUnlocked=false;backgroundAt=0;locked=true;render();}call.resolve(status());}); }
     private void authenticate(PluginCall call,String next) {
         if(authenticating){if(call!=null)call.reject("Authentication is already open.");return;}
         if(!keyguard().isDeviceSecure()){if(call!=null)call.reject("Set a screen lock in Android Settings first.");return;}
@@ -84,7 +95,7 @@ public class DeviceLockPlugin extends Plugin {
     @ActivityCallback private void credentialResult(PluginCall call,ActivityResult result){finish(result.getResultCode()==Activity.RESULT_OK,"Authentication canceled.");}
     private void finish(boolean success,String error) {
         authenticating=false;
-        if(success){if("enable".equals(action)||"disable".equals(action)){enabled="enable".equals(action);getContext().getSharedPreferences("birrx-security",0).edit().putBoolean("enabled",enabled).apply();}locked=false;}
+        if(success){if("enable".equals(action)||"disable".equals(action)){enabled="enable".equals(action);getContext().getSharedPreferences("birrx-security",0).edit().putBoolean("enabled",enabled).apply();}locked=false;backgroundAt=0;resumeUnlocked=false;}
         render();
         if(pending!=null){if(success)pending.resolve(status());else pending.reject(error==null?"Authentication canceled.":error);}
         pending=null;action=null;

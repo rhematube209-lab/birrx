@@ -4,7 +4,7 @@ import java.util.regex.*;
 final class TransactionAlert {
     static String title(String raw, String bank, boolean hidden) {
         String text = raw.replaceAll("\\s+", " ");
-        boolean outgoing = Pattern.compile("your payment of|transferred|\\bpaid\\b|repaid|debited|debit transaction", Pattern.CASE_INSENSITIVE).matcher(text).find();
+        boolean outgoing = Pattern.compile("ልከዋል|አስተላልፈዋል|your payment of|transferred|\\bpaid\\b|repaid|debited|debit transaction", Pattern.CASE_INSENSITIVE).matcher(text).find();
         Matcher amount = Pattern.compile("(?:ETB\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)|repaid\\s+([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s+ETB)", Pattern.CASE_INSENSITIVE).matcher(text);
         String value = "";
         if (amount.find()) {
@@ -23,6 +23,14 @@ final class TransactionAlert {
             if(parking.find()){value=new java.math.BigDecimal(parking.group(1).replace(",","")).stripTrailingZeros().toPlainString();person=parking.group(2).trim();}
             else if(recipient.find())person=recipient.group(1).trim();
             else if(from.find())person=from.group(1).trim();
+        }
+        if ("Telebirr".equals(bank) && text.contains("ብር")) {
+            Matcher amharicAmount = Pattern.compile("([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s+ብር").matcher(text);
+            if (amharicAmount.find()) {
+                try { value = new java.math.BigDecimal(amharicAmount.group(1).replace(",", "")).stripTrailingZeros().toPlainString(); } catch (NumberFormatException ignored) {}
+            }
+            Matcher amharicPeer = Pattern.compile("(?:ወደ|ከ)\\s+(.+?)\\s*\\([+0-9*]+\\)").matcher(text);
+            if (amharicPeer.find()) person = amharicPeer.group(1).trim();
         }
         if (person.matches("[+0-9* ]+") || person.length()>80) person="";
         String prefix = hidden ? (outgoing ? "Outgoing transaction" : "Incoming transaction") : value.isEmpty() ? "New " + bank + " transaction" : (outgoing ? "-" : "+") + value + " ETB";

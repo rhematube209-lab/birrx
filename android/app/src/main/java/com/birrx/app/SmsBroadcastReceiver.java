@@ -44,7 +44,7 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
         if (sender != null && SmsScannerPlugin.isSupportedSender(sender)) {
             SmsScannerPlugin.onIncomingSms(sender, fullBody.toString(), timestamp);
             if (context.getSharedPreferences("birrx-notifications", 0).getBoolean("transactions", false)
-                && fullBody.toString().matches("(?is).*(?:your payment of|transferred to other bank|has been credited to your account|debited with ETB|credited with ETB|debit transaction of ETB|You have (?:received\\s+ETB|transferred ETB|paid ETB|successfully transferred ETB|successfully paid a credit amount|repaid)).*")) {
+                && fullBody.toString().matches("(?is).*(?:ልከዋል|አስተላልፈዋል|ተቀብለዋል|ተላልፏል|your payment of|transferred to other bank|has been credited to your account|debited with ETB|credited with ETB|debit transaction of ETB|You have (?:received\\s+ETB|transferred ETB|paid ETB|successfully transferred ETB|successfully paid a credit amount|repaid)).*")) {
                 android.app.NotificationManager manager = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
                 if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
                 NotificationChannels.ensure(context);
@@ -52,6 +52,10 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
                 Intent launch = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP).putExtra("birrxSmsTimestamp", timestamp).putExtra("birrxSmsBank", bank);
                 java.util.regex.Matcher reference = java.util.regex.Pattern.compile("(?:Your (?:telebirr )?transaction number is|by transaction number)\\s+([A-Za-z0-9-]+)|https://mbreciept\\.cbe\\.com\\.et/([A-Za-z0-9-]+)|https://cs\\.bankofabyssinia\\.com/slip/\\?trx=([A-Za-z0-9]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(fullBody);
                 if ("Awash".equals(bank)) { java.util.regex.Matcher awashRef = java.util.regex.Pattern.compile("https://awashpay[.]awashbank[.]com:8225/([A-Za-z0-9-]+)").matcher(fullBody); if(awashRef.find()) launch.putExtra("birrxSmsReference",awashRef.group(1)); }
+                if ("Telebirr".equals(bank)) {
+                    java.util.regex.Matcher amharicRef = java.util.regex.Pattern.compile("(?:የ(?:ቴሌብር\\s+)?ሂሳብ\\s+እንቅስቃሴ\\s+ቁጥርዎ|በግብይት\\s+ቁጥር)\\s+([A-Za-z0-9-]+)").matcher(fullBody);
+                    if (amharicRef.find()) launch.putExtra("birrxSmsReference", amharicRef.group(1));
+                }
                 if (reference.find()) for (int i = 1; i <= 3; i++) if (reference.group(i) != null) launch.putExtra("birrxSmsReference", reference.group(i));
                 try {
                     android.content.SharedPreferences prefs = context.getSharedPreferences("birrx-notifications", 0);

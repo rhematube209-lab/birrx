@@ -1,9 +1,11 @@
 import {useEffect,useState,type FormEvent} from 'react';
 import type {Session} from '@supabase/supabase-js';
-import {authClient,authErrorMessage} from './services/auth';
+import {authClient,authErrorMessage,connectionMessage} from './services/auth';
 
 type Mode='signin'|'signup'|'verify'|'forgot'|'recover'|'password';
 export function AccountPanel(){
+ const [online,setOnline]=useState(()=>navigator.onLine);
+ useEffect(()=>{const refresh=()=>setOnline(navigator.onLine);window.addEventListener('online',refresh);window.addEventListener('offline',refresh);return()=>{window.removeEventListener('online',refresh);window.removeEventListener('offline',refresh);};},[]);
  const [session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(true);
  const [mode,setMode]=useState<Mode>('signin'),[email,setEmail]=useState('');
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
@@ -19,7 +21,7 @@ export function AccountPanel(){
  const changeMode=(next:Mode)=>{setMode(next);setError('');setMessage('');};
  const run=async(action:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError('');setMessage('');try{await action();}catch(e){setError(authErrorMessage(e));}finally{setBusy(false);}};
  const submit=(event:FormEvent<HTMLFormElement>)=>{
-  event.preventDefault();const form=new FormData(event.currentTarget);
+  event.preventDefault();if(!navigator.onLine){setError(connectionMessage);return;}const form=new FormData(event.currentTarget);
   void run(async()=>{
    if(!authClient)throw Error('Account services are not configured yet.');
    const address=String(form.get('email')||email).trim().toLowerCase();setEmail(address);
@@ -53,7 +55,7 @@ export function AccountPanel(){
  });
  if(!authClient)return <section className="card accountpanel"><h2>BirrX account</h2><p>Registration and sign-in are being set up.</p><small>You can continue using your records on this device.</small></section>;
  if(loading)return <section className="card accountpanel" aria-busy="true"><h2>BirrX account</h2><p>Loading your account…</p></section>;
- const notice=<><p className="out" role="alert">{error}</p><p role="status">{message}</p></>;
+ const notice=<><p className="out" role="alert">{error||(!online?connectionMessage:'')}</p><p role="status">{message}</p></>;
  if(session&&mode!=='password')return <section className="card accountpanel"><h2>BirrX account</h2><p className="accountemail">{session.user.email}</p><span className="chip">Signed in</span><div className="profileid"><small>Account ID</small><code>{session.user.id}</code></div><p>Financial records stay on this device. Cloud backup is not connected yet.</p>{notice}<div className="actions"><button disabled={busy} onClick={()=>changeMode('password')}>Change password</button><button disabled={busy} onClick={()=>void run(async()=>{if(!authClient)return;const {error}=await authClient.auth.signOut({scope:'local'});if(error)throw error;setMode('signin');setMessage('Signed out. Your device records are still available.');})}>Sign out</button></div></section>;
  const title={signin:'Sign in to BirrX',signup:'Create your BirrX account',verify:'Verify your email',forgot:'Reset your password',recover:'Enter your recovery code',password:'Choose a new password'}[mode];
  const codeMode=mode==='verify'||mode==='recover',passwordMode=mode==='signin'||mode==='signup'||mode==='password';
