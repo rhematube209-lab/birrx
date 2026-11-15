@@ -38,3 +38,8 @@ it('renders category groups in chip mode and keeps each choice selectable',async
  await user.click(screen.getByRole('combobox'));const list=await screen.findByRole('listbox');expect(list.classList.contains('categorychips')).toBe(true);await waitFor(()=>expect(document.activeElement).toBe(screen.getByRole('dialog')));await user.keyboard('{ArrowDown}');expect(document.activeElement).toBe(screen.getByRole('option',{name:'Category 0'}));await user.keyboard('{ArrowRight}');expect(document.activeElement).toBe(screen.getByRole('option',{name:'Category 1'}));await user.click(screen.getByRole('option',{name:'Category 5'}));expect(change.mock.calls[0][0].target.value).toBe('5');
 });
 it('lets Android handle root navigation when there is no open dialog',()=>{expect(dismissTopDialog()).toBe(false);});
+
+it('distinguishes accounts sharing a bank while preserving the branded icon',async()=>{
+ const user=userEvent.setup(),change=vi.fn();render(<BrandedSelect aria-label="Account" onChange={change}><option value="CBE|1***1569">CBE · 1569</option><option value="CBE|1***2888">CBE · 2888</option></BrandedSelect>);
+ await user.click(screen.getByRole('combobox'));const second=screen.getByRole('option',{name:/CBE · 2888/});expect(second.querySelector('img')?.getAttribute('src')).toBe('/banks/cbe.webp');await user.click(second);expect(change.mock.calls[0][0].target.value).toBe('CBE|1***2888');await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
+});

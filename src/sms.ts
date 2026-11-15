@@ -223,7 +223,7 @@ export function parseSms(e:SmsEnvelope):ParsedSms{
  let provider=sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr';
  if(provider==='Awash'){}
  else if(/Thank you for using telebirr/i.test(body))provider='Telebirr';
- else if(/Thanks for Banking with CBE/i.test(body))provider='CBE';
+ else if(/(?:Thanks|Thank you) for Banking with CBE/i.test(body))provider='CBE';
  else if(/Bank of Abyssinia\b/i.test(body))provider='BOA';
  let when=metadata(e),ref='',principal:number|undefined,person='',name='',category='Other',mask:string|undefined,balance:number|undefined;
  const feeParts={service:0,vat:0,disaster:0};
@@ -248,21 +248,24 @@ export function parseSms(e:SmsEnvelope):ParsedSms{
   const fee=/Mobile Banking Monthly Maintenance Fee/i.test(body);category=fee?'Fees':principal>0?'Income':'Other';name=fee?'Mobile banking maintenance fee':principal>0?'BOA credit':'BOA debit';
   balance=findMoney(body,'Available Balance:\\s*ETB');
  }else if(provider==='CBE'){
-  if(!/Thanks for Banking with CBE/i.test(body))throw Error('CBE message signature is missing.');
+  if(!/(?:Thanks|Thank you) for Banking with CBE/i.test(body))throw Error('CBE message signature is missing.');
   const received=body.match(new RegExp('You have received ETB\\s*'+amount+'\\s+from account\\s+[\\d*]+\\s*\\(([^)]+)\\)\\s+to your account\\s+([\\d*]+)','i'));
   const sent=body.match(new RegExp('You have successfully transferred ETB\\s*'+amount+'\\s+from account\\s+([\\d*]+)\\s+to account\\s+[\\d*]+\\s*\\(([^)]+)\\)','i'));
   const debit=body.match(new RegExp('(?:A|An ATM) debit transaction of ETB\\s*'+amount+'\\s+has occurred on your account\\s+([\\d*]+)','i'));
   const credit=body.match(new RegExp('A credit transaction of ETB\\s*'+amount+'\\s+has occurred on your account\\s+([\\d*]+)','i'));
+  const legacy=body.match(new RegExp('your Account\\s+([\\d*]+)\\s+has been (credited|debited) with ETB\\s*'+amount,'i'));
   if(received){principal=money(received[1]);person=received[2];mask=received[3];category='Income';name='Received from '+person;}
   else if(sent){principal=-money(sent[1]);mask=sent[2];person=sent[3];name='Transfer to '+person;}
   else if(debit){principal=-money(debit[1]);mask=debit[2];name=/An ATM debit/i.test(body)?'CBE ATM withdrawal':'CBE debit';}
   else if(credit){principal=money(credit[1]);mask=credit[2];category='Income';name='CBE credit';}
+  else if(legacy){principal=money(legacy[3])*(legacy[2].toLowerCase()==='credited'?1:-1);mask=legacy[1];const monthly=/Info:\s*Mobile Banking Monthly Service Fee/i.test(body);category=monthly?'Fees':principal>0?'Income':'Other';name=monthly?'Mobile banking maintenance fee':principal>0?'CBE credit':'CBE debit';}
   else throw Error('CBE message format needs review.');
   mask=mask?.replace(/\*+/g,'***');
-  ref=body.match(/https:\/\/mbreciept\.cbe\.com\.et\/([A-Za-z0-9-]+)/i)?.[1]||'';
+  ref=body.match(/https:\/\/mbreciept\.cbe\.com\.et\/([A-Za-z0-9-]+)/i)?.[1]||body.match(/https:\/\/apps\.cbe\.com\.et:100\/BranchReceipt\/([A-Za-z0-9-]+)/i)?.[1]||'';
   feeParts.service=findMoney(body,'Service charge of ETB')||0;feeParts.vat=findMoney(body,'VAT\\(15%\\) of ETB')||0;feeParts.disaster=findMoney(body,'Disaster Recovery\\(5%\\) of(?: ETB)?')||0;
   const total=findMoney(body,'with total of ETB');if(total!==undefined&&total!==Math.abs(principal)+feeParts.service+feeParts.vat+feeParts.disaster)throw Error('CBE total does not match principal and fees. Review before saving.');
   balance=findMoney(body,'Your current balance is ETB');
+  if(!ref&&legacy&&category==='Fees'&&when&&balance!==undefined)ref=`CBE-MONTHLY-${mask}-${when.at}-${Math.abs(principal)}-${balance}`;
  }else{
   if(/Your prepaid account has been recharged successfully/i.test(body)){
    const airtime=findMoney(body,'Your balance is');if(airtime===undefined||!when)throw Error('Airtime report requires its SMS receipt date and balance.');
@@ -274,7 +277,7 @@ export function parseSms(e:SmsEnvelope):ParsedSms{
    return {provider,identity:`package|${planKey(pkg.name)}|${pkg.end||''}|${when.at}|${pkg.usedPercent??''}|${pkg.status||'notice'}`,at:when.at,date:when.date,time:when.time,records:[],package:pkg};
   }
   if(!/Thank you for using telebirr/i.test(body))throw Error('Telebirr financial message signature is missing.');
-  const deposit=body.match(new RegExp('You have received\\s+ETB\\s*'+amount+'\\s+by transaction number\\s+([A-Za-z0-9-]+)\\s+on\\s+(.+?)\\s+from Commercial Bank of Ethiopia to your telebirr Account','i'));
+  const deposit=body.match(new RegExp('You have received\\s+ETB\\s*'+amount+'\\s+by transaction number\\s+([A-Za-z0-9-]+)\\s+on\\s+(.+?)\\s+from (Commercial Bank of Ethiopia|Bank of Abyssinia) to your telebirr Account','i'));
   const creditPaid=body.match(new RegExp('successfully paid a credit amount of\\s+ETB\\s*'+amount+'\\s+on\\s+([^.]*)','i'));
   const repaid=body.match(new RegExp('You have repaid\\s+'+amount+'\\s+ETB,?\\s+for your telebirr','i'));
   if(/Your outstanding telebirr.+overdue/i.test(body)){
@@ -288,7 +291,7 @@ export function parseSms(e:SmsEnvelope):ParsedSms{
   const billPaid=body.match(new RegExp('You have paid\\s+ETB\\s*'+amount+'\\s+for\\s+(.+?)\\s+(?:to|from)\\s+(?:merchant\\s+)?(.+?)(?:\\s*\\([+\\d*]+\\))?\\s+on\\s+(.+?)\\.','i'));
   const peer=body.match(new RegExp('You have (paid|received|deposited|withdrawn) ETB\\s*'+amount+'\\s+(?:to|from)\\s+(?:agent\\s+)?(.+?)(?:\\s*\\([+\\d*]+\\))?\\s+on\\s+(.+?)\\.','i'));
   const credited=body.match(new RegExp('(?:Your (?:telebirr )?account(?:\\s+[+\\d*]+)?\\s+)?(?:was|has been) (credited|debited) with ETB\\s*'+amount+'\\s+on\\s+(.+?)(?:\\s+via\\s+(.+?))?\\.?\\s*Your transaction','i'));
-  if(deposit){principal=money(deposit[1]);ref=deposit[2];name='Transfer from CBE';when=noticeDate(deposit[3]);}
+  if(deposit){principal=money(deposit[1]);ref=deposit[2];name='Transfer from '+(deposit[4].toLowerCase()==='bank of abyssinia'?'BOA':'CBE');category='Income';when=noticeDate(deposit[3]);}
   else if(creditPaid||repaid){const m=creditPaid||repaid!;principal=-money(m[1]);name=creditPaid?'Telebirr credit repayment':'Telebirr weekly loan repayment';category='Loan repayment';if(creditPaid)when=noticeDate(creditPaid[2]);if(!when)throw Error('Loan repayment requires its SMS receipt date.');ref='LOAN-'+(creditPaid?'CREDIT':'WEEKLY')+'-'+when.at+'-'+Math.abs(principal);}
   else if(airtime){principal=-money(airtime[1]);name='Airtime purchase';category='Utilities';when=dmy(airtime[2]);}
   else if(bankTransfer){principal=-money(bankTransfer[1]);name='Transfer to CBE';when=dmy(bankTransfer[2]);ref=bankTransfer[3];}
@@ -315,7 +318,7 @@ export function parseSms(e:SmsEnvelope):ParsedSms{
 function packageTarget(s:State,p:ParsedSms){const pkg=p.package!;return s.packages.filter(x=>x.source==='sms'&&planKey(x.name||'')===planKey(pkg.name)&&(!pkg.end||x.end===pkg.end&&(!pkg.endTime||x.endTime===pkg.endTime))&&x.status!=='exhausted'&&(!x.start||x.start<=p.at)&&(!!pkg.end||x.end+(x.endTime?'T'+x.endTime:'T23:59:59')>=p.at));}
 function validate(s:State,p:ParsedSms){
  if(!p.records.length&&(s.smsEvents||[]).includes(p.identity))return;
- const a=s.accounts.find(a=>a.bank===p.provider);if(a?.accountMask&&p.accountMask&&a.accountMask!==p.accountMask)throw Error('Different owned account mask: review account mapping before import.');
+ if(p.records.length&&!p.accountMask&&s.accounts.filter(a=>a.bank===p.provider).length>1)throw Error('Missing owned account identifier: choose an account before importing.');
  for(const r of p.records){const old=s.tx.find(t=>key(t)===key(r));if(old&&old.amt!==r.amt)throw Error('Same reference has a different amount. Review the conflicting alerts.');}
  if(p.package&&!p.package.activation&&packageTarget(s,p).length!==1)throw Error('Package update cannot be matched to one activation. Import its activation first, with the SMS receipt date.');
 }
@@ -323,7 +326,7 @@ function enrich(old:Tx,r:Tx){return r.sms&&old.sms&&r.cat==='Fees'&&old.cat==='O
 function apply(s:State,p:ParsedSms):State{
  if(!p.records.length&&(s.smsEvents||[]).includes(p.identity))return s;
  validate(s,p);const tx=[...s.tx];for(const r of p.records){const i=tx.findIndex(t=>key(t)===key(r));if(i<0)tx.push({...r,cat:s.rules[r.bank+'|'+r.name.toLowerCase()]||r.cat});else tx[i]=enrich(tx[i],r);}
- const accounts=s.accounts.map(a=>({...a}));if(p.records.length){let a=accounts.find(a=>a.bank===p.provider);if(!a){a={bank:p.provider,bal:null,date:''};accounts.push(a);}if(p.accountMask&&!a.accountMask)a.accountMask=p.accountMask;
+ const accounts=s.accounts.map(a=>({...a}));if(p.records.length){let a=accounts.find(a=>a.bank===p.provider&&a.accountMask===p.accountMask)|| (p.accountMask?accounts.find(a=>a.bank===p.provider&&!a.accountMask):undefined);if(!a){a={bank:p.provider,bal:null,date:'',accountMask:p.accountMask};accounts.push(a);}if(p.accountMask&&!a.accountMask)a.accountMask=p.accountMask;
   if(p.balance!==undefined&&(p.date>a.date||p.date===a.date&&!!p.time&&p.time>(a.time||''))){a.bal=p.balance;a.date=p.date;a.time=p.time;}}
  let packages=[...s.packages];if(p.package){const n=p.package;if(n.activation){const id=`sms|${planKey(n.name)}|${n.end}|${n.endTime||''}`,old=packages.find(x=>x.id===id);if(!old)packages.push({id,source:'sms',name:n.name,type:n.type,size:n.size,end:n.end!,endTime:n.endTime,start:n.start||p.at,bonus:n.bonus,status:'active',reportedAt:p.at});}
   else{const target=packageTarget(s,p)[0];if(!target.reportedAt||p.at>=target.reportedAt)packages=packages.map(x=>x===target?{...x,usedPercent:n.usedPercent===undefined?x.usedPercent:Math.max(x.usedPercent||0,n.usedPercent),status:n.status||x.status,reportedAt:p.at}:x);}}
@@ -339,7 +342,7 @@ export function previewSmsText(body:string,sender:string,date:string,time:string
   let s=sender;
   if(/https:\/\/awashpay\.awashbank\.com/i.test(text))s='AWASH';
   else if(/Thank you for using telebirr|በቴሌብር\s+ስለተገለገሉ/i.test(text))s='127';
-  else if(/Thanks for Banking with CBE/i.test(text))s='CBE';
+  else if(/(?:Thanks|Thank you) for Banking with CBE/i.test(text))s='CBE';
   else if(/Bank of Abyssinia\b/i.test(text))s='BOA';
   return {sender:s,body:text,date:date||undefined,time:time||undefined};
  }),state);

@@ -51,6 +51,10 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
                 String bank = sender.toUpperCase(java.util.Locale.US).replace(" ", "").startsWith("AWASH") ? "Awash" : sender.equalsIgnoreCase("CBE") ? "CBE" : sender.equalsIgnoreCase("BOA") ? "BOA" : "Telebirr";
                 Intent launch = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP).putExtra("birrxSmsTimestamp", timestamp).putExtra("birrxSmsBank", bank);
                 java.util.regex.Matcher reference = java.util.regex.Pattern.compile("(?:Your (?:telebirr )?transaction number is|by transaction number)\\s+([A-Za-z0-9-]+)|https://mbreciept\\.cbe\\.com\\.et/([A-Za-z0-9-]+)|https://cs\\.bankofabyssinia\\.com/slip/\\?trx=([A-Za-z0-9]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(fullBody);
+                if ("CBE".equals(bank)) {
+                    java.util.regex.Matcher branchRef = java.util.regex.Pattern.compile("https://apps[.]cbe[.]com[.]et:100/BranchReceipt/([A-Za-z0-9-]+)").matcher(fullBody);
+                    if (branchRef.find()) launch.putExtra("birrxSmsReference", branchRef.group(1));
+                }
                 if ("Awash".equals(bank)) { java.util.regex.Matcher awashRef = java.util.regex.Pattern.compile("https://awashpay[.]awashbank[.]com:8225/([A-Za-z0-9-]+)").matcher(fullBody); if(awashRef.find()) launch.putExtra("birrxSmsReference",awashRef.group(1)); }
                 if ("Telebirr".equals(bank)) {
                     java.util.regex.Matcher amharicRef = java.util.regex.Pattern.compile("(?:የ(?:ቴሌብር\\s+)?ሂሳብ\\s+እንቅስቃሴ\\s+ቁጥርዎ|በግብይት\\s+ቁጥር)\\s+([A-Za-z0-9-]+)").matcher(fullBody);

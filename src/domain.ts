@@ -1,6 +1,6 @@
 export function uid(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
 export type SmsSource={sender:string;reference:string;accountMask?:string;role:'principal'|'fee';feeParts?:{service:number;vat:number;disaster:number}};
-export type Tx={id:string;name:string;bank:string;amt:number;cat:string;date:string;time:string;ref:string;person:string;note:string;flag:boolean;transfer?:string;sms?:SmsSource};
+export type Tx={id:string;name:string;bank:string;amt:number;cat:string;date:string;time:string;ref:string;person:string;note:string;flag:boolean;transfer?:string;accountMask?:string;sms?:SmsSource};
 export type MobilePackage={type:string;size:string;end:string;id?:string;name?:string;start?:string;endTime?:string;bonus?:string;usedPercent?:number;status?:'active'|'exhausted';reportedAt?:string;source?:'sms'};
 export type Period={scope:'Year'|'Month'|'Day'|'Hour';date:string;hour:string};
 export type UnmatchedItem={id:string;date:string;time?:string;sender?:string;provider?:string;reason?:string;reasonLabel?:string;actionHint?:string;category?:'security'|'promo'|'service'|'unsupported'|'action_required'};
@@ -24,29 +24,35 @@ export function totals(rows:Tx[]){let inc=0,exp=0;for(const r of rows)if(!own(r)
 export function reconcile(s:State,decision:State['decision']):State{const a=s.tx.find(r=>r.id==='n9'),b=s.tx.find(r=>r.id==='n10');if(decision==='confirmed'&&(!a||!b||a.bank===b.bank||a.amt+b.amt!==0||a.ref!==b.ref))throw Error('The two matching legs are required.');return {...s,decision,tx:s.tx.map(r=>['n9','n10'].includes(r.id)?{...r,transfer:decision==='confirmed'?'TB1042':undefined}:r)};}
 export function reported(s:State){const a=s.accounts.filter(a=>a.bal!==null);return {accounts:a,balance:a.length?a.reduce((n,a)=>n+a.bal!,0):null};}
 export function categories(rows:Tx[]){const g:Record<string,number>={};rows.filter(r=>r.amt<0&&!own(r)).forEach(r=>g[r.cat]=(g[r.cat]||0)-r.amt);return Object.entries(g).sort((a,b)=>b[1]-a[1]);}
-export function filterAccount(rows:Tx[],account:string){return account==='All'?rows:rows.filter(r=>r.bank===account);}
+type AccountIdentity={bank:string;accountMask?:string;sms?:SmsSource};
+export const accountMaskOf=(a:AccountIdentity)=>a.accountMask||a.sms?.accountMask;
+export const accountKey=(a:AccountIdentity)=>a.bank+(accountMaskOf(a)?'|'+accountMaskOf(a)!.replace(/\*+/g,'***'):'');
+export const accountLabel=(a:AccountIdentity)=>a.bank+(accountMaskOf(a)?' · '+accountMaskOf(a)!.slice(-4):'');
+export function filterAccount(rows:Tx[],account:string){return account==='All'?rows:rows.filter(r=>account.includes('|')?accountKey(r)===account:r.bank===account);}
+
 export function csvRows(t:string){let out:string[][]=[],row:string[]=[],v='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(c==='"'){if(q&&t[i+1]==='"'){v+='"';i++;}else q=!q;}else if(c===','&&!q){row.push(v.trim());v='';}else if(c==='\n'&&!q){row.push(v.trim());out.push(row);row=[];v='';}else v+=c;}if(q)throw Error('Unfinished quoted CSV field.');row.push(v.trim());out.push(row);return out.filter(r=>r.some(Boolean));}
 export const sampleCsv='date,bank,merchant,direction,amount,reference\n2026-11-11,Telebirr,Blue taxi,Debit,125.00,DEMO-551\n2026-11-09,Telebirr,Shola Market,Debit,1450.00,N7';
 export const sampleMsg='DEMO | Telebirr | Debit | 125.00 | Blue taxi | 2026-11-11 | DEMO-551';
 export type Preview={row:number;record?:Tx;status:string};
 export function preview(raw:string,method:string,s:State):Preview[]{let inputs:Record<string,string>[]=[];if(method==='Paste SMS'){const p=raw.split('|').map(x=>x.trim());if(p[0]!=='DEMO'||p.length!==7)throw Error('Unrecognized message. Use Manual or add to unmatched review.');inputs=[{bank:p[1],direction:p[2],amount:p[3],merchant:p[4],date:p[5],reference:p[6]}];}else{const [headers,...rows]=csvRows(raw.replace(/^\uFEFF/,''));if(!headers||['date','bank','merchant','direction','amount','reference'].some(k=>!headers.includes(k))||new Set(headers).size!==headers.length)throw Error('Required headers: date,bank,merchant,direction,amount,reference');inputs=rows.map(row=>Object.fromEntries(headers.map((k,i)=>[k,row[i]||''])));}
-const seen=new Set(s.tx.map(key));return inputs.map((r,i)=>{try{if(!s.accounts.some(a=>a.bank===r.bank))throw Error('Unknown account');if(!validDate(r.date))throw Error('Invalid date');if(r.time&&!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(r.time))throw Error('Invalid EAT time');if(!r.merchant.trim()||!r.reference.trim())throw Error('Merchant and reference required');if(!['Debit','Credit'].includes(r.direction))throw Error('Direction must be Debit or Credit');const record:Tx={id:uid(),name:r.merchant.trim(),bank:r.bank,amt:cents(r.amount)*(r.direction==='Debit'?-1:1),cat:s.rules[r.bank+'|'+r.merchant.trim().toLowerCase()]||(r.direction==='Credit'?'Income':'Other'),date:r.date,time:r.time||'',person:r.person||'',ref:r.reference.trim(),note:'',flag:false};const k=key(record);if(seen.has(k))return {row:i+1,record,status:'Duplicate'};seen.add(k);return {row:i+1,record,status:'Ready'};}catch(e){return {row:i+1,status:(e as Error).message};}});}
-export const key=(r:Tx)=>r.bank.trim().toLowerCase()+'|'+(r.bank==='CBE'&&r.ref.startsWith('v2-')?r.ref.trim():r.ref.trim().toUpperCase());
+const seen=new Set(s.tx.map(key));return inputs.map((r,i)=>{try{const candidates=s.accounts.filter(a=>r.account_mask?accountKey(a)===accountKey({bank:r.bank,accountMask:r.account_mask}):accountKey(a)===r.bank||a.bank===r.bank);if(!candidates.length)throw Error('Unknown account');if(candidates.length>1)throw Error('Choose a specific account or include account_mask.');const selected=candidates[0];if(!validDate(r.date))throw Error('Invalid date');if(r.time&&!/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(r.time))throw Error('Invalid EAT time');if(!r.merchant.trim()||!r.reference.trim())throw Error('Merchant and reference required');if(!['Debit','Credit'].includes(r.direction))throw Error('Direction must be Debit or Credit');const record:Tx={id:uid(),name:r.merchant.trim(),bank:selected.bank,accountMask:selected.accountMask,amt:cents(r.amount)*(r.direction==='Debit'?-1:1),cat:s.rules[r.bank+'|'+r.merchant.trim().toLowerCase()]||(r.direction==='Credit'?'Income':'Other'),date:r.date,time:r.time||'',person:r.person||'',ref:r.reference.trim(),note:'',flag:false};const k=key(record);if(seen.has(k))return {row:i+1,record,status:'Duplicate'};seen.add(k);return {row:i+1,record,status:'Ready'};}catch(e){return {row:i+1,status:(e as Error).message};}});}
+export const key=(r:Tx)=>accountKey(r).trim().toLowerCase()+'|'+(r.bank==='CBE'&&r.ref.startsWith('v2-')?r.ref.trim():r.ref.trim().toUpperCase());
 export function commit(s:State,p:Preview[]){const seen=new Set(s.tx.map(key));return {...s,tx:[...s.tx,...p.filter(p=>p.status==='Ready'&&p.record).map(p=>p.record!).filter(r=>{const k=key(r);if(seen.has(k))return false;seen.add(k);return true;})]};}
-export function exportCSV(rows:Tx[]){const quote=(v:string)=>'"'+(/^[=+@\-]/.test(v)?"'":'')+v.replaceAll('"','""')+'"';return ['date,time,bank,merchant,direction,amount,reference,category,person,note',...rows.map(r=>[r.date,r.time,r.bank,r.name,r.amt<0?'Debit':'Credit',(Math.abs(r.amt)/100).toFixed(2),r.ref,r.cat,r.person,r.note].map(quote).join(','))].join('\r\n');}
+export function exportCSV(rows:Tx[]){const quote=(v:string)=>'"'+(/^[=+@\-]/.test(v)?"'":'')+v.replaceAll('"','""')+'"';return ['date,time,bank,merchant,direction,amount,reference,category,person,note,account_mask',...rows.map(r=>[r.date,r.time,r.bank,r.name,r.amt<0?'Debit':'Credit',(Math.abs(r.amt)/100).toFixed(2),r.ref,r.cat,r.person,r.note,accountMaskOf(r)||''].map(quote).join(','))].join('\r\n');}
 export type TransferPair={key:string;legs:[Tx,Tx];decision:State['decision']};
 export function transferPairs(s:State):TransferPair[]{
  const groups=new Map<string,Tx[]>();
  for(const r of s.tx){if(!r.ref.trim()||!r.amt)continue;const k=r.ref.trim().toUpperCase()+'|'+r.date+'|'+Math.abs(r.amt);groups.set(k,[...(groups.get(k)||[]),r]);}
  const pairs:TransferPair[]=[];
- for(const incoming of s.tx.filter(r=>r.bank==='Telebirr'&&r.amt>0&&r.name==='Transfer from CBE'&&r.sms)){
-  const candidates=s.tx.filter(r=>r.bank==='CBE'&&r.amt===-incoming.amt&&r.date===incoming.date&&r.sms?.role==='principal');
-  const credits=s.tx.filter(r=>r.bank==='Telebirr'&&r.amt===incoming.amt&&r.date===incoming.date&&r.name==='Transfer from CBE');
+ for(const incoming of s.tx.filter(r=>r.bank==='Telebirr'&&r.amt>0&&['Transfer from CBE','Transfer from BOA'].includes(r.name)&&r.sms)){
+  const sourceBank=incoming.name==='Transfer from BOA'?'BOA':'CBE';
+  const candidates=s.tx.filter(r=>r.bank===sourceBank&&r.amt===-incoming.amt&&r.date===incoming.date&&r.sms?.role==='principal');
+  const credits=s.tx.filter(r=>r.bank==='Telebirr'&&r.amt===incoming.amt&&r.date===incoming.date&&r.name===incoming.name);
   if(candidates.length===1&&credits.length===1&&candidates[0].ref.toUpperCase()!==incoming.ref.toUpperCase())groups.set('bank-transfer|'+incoming.id,[candidates[0],incoming]);
  }
  for(const legs of groups.values()){
   // Ambiguous statements never produce an automatic proposed pair.
-  if(legs.length!==2||legs[0].bank===legs[1].bank||legs[0].amt+legs[1].amt!==0)continue;
+  if(legs.length!==2||accountKey(legs[0])===accountKey(legs[1])||legs[0].amt+legs[1].amt!==0)continue;
   const [outgoing,incoming]=legs[0].amt<0?legs:[legs[1],legs[0]],key=[outgoing.id,incoming.id].sort().join('|');
   const demo=legs.some(r=>r.id==='n9')&&legs.some(r=>r.id==='n10');
   const decision=s.transferDecisions?.[key]||(demo?s.decision:outgoing.transfer&&outgoing.transfer===incoming.transfer?'confirmed':'pending');
