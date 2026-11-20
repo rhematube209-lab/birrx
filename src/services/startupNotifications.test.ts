@@ -1,0 +1,12 @@
+// @vitest-environment jsdom
+import {beforeEach,it,expect,vi} from 'vitest';
+const api=vi.hoisted(()=>({checkPermissions:vi.fn(),requestPermissions:vi.fn()}));
+vi.mock('@capacitor/local-notifications',()=>({LocalNotifications:api}));
+vi.mock('@capacitor/core',()=>({registerPlugin:()=>({})}));
+vi.mock('./androidSmsBridge',()=>({isAndroidNative:()=>true}));
+beforeEach(()=>{vi.resetModules();vi.clearAllMocks();localStorage.clear();api.checkPermissions.mockResolvedValue({display:'prompt'});api.requestPermissions.mockResolvedValue({display:'granted'});});
+it('requests startup permission once and shares concurrent calls',async()=>{const {startupNotificationPermission}=await import('./notifications');expect(await Promise.all([startupNotificationPermission(),startupNotificationPermission()])).toEqual(['granted','granted']);expect(api.requestPermissions).toHaveBeenCalledTimes(1);expect(localStorage.getItem('birrx-notification-permission-asked')).toBe('1');});
+it('does not keep asking after a declined startup request',async()=>{api.requestPermissions.mockResolvedValue({display:'denied'});const {startupNotificationPermission}=await import('./notifications');expect(await startupNotificationPermission()).toBe('denied');await startupNotificationPermission();expect(api.requestPermissions).toHaveBeenCalledTimes(1);});
+it('skips the system prompt for permission already granted or denied',async()=>{const {startupNotificationPermission}=await import('./notifications');for(const display of ['granted','denied']){api.checkPermissions.mockResolvedValue({display});expect(await startupNotificationPermission()).toBe(display);}expect(api.requestPermissions).not.toHaveBeenCalled();});
+it('keeps explicit notification preferences and enables only unset types',async()=>{const {notificationDefaults}=await import('./notifications');const prefs={notify_transactions:'Off',notify_goals:'On',theme:'dark'};expect(notificationDefaults(prefs)).toEqual({...prefs,notify_plans:'On',notify_recurring:'On',notify_dailyInsights:'On',notify_weeklyInsights:'On'});expect(prefs).not.toHaveProperty('notify_plans');});
+it('can recover from a failed permission API call without recording a false decision',async()=>{api.requestPermissions.mockRejectedValueOnce(Error('unavailable'));const {startupNotificationPermission}=await import('./notifications');await expect(startupNotificationPermission()).rejects.toThrow('unavailable');expect(localStorage.getItem('birrx-notification-permission-asked')).toBeNull();expect(await startupNotificationPermission()).toBe('granted');});

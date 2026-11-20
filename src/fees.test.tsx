@@ -1,0 +1,16 @@
+// @vitest-environment jsdom
+import {afterEach,describe,it,expect,vi} from 'vitest';
+import {cleanup,render,screen,fireEvent} from '@testing-library/react';
+import {fresh,feesByAccount,periodRows,type Tx} from './domain';
+import {FeeSummary} from './FinanceViews';
+afterEach(cleanup);
+const record=(id:string,amt:number,mask:string,cat='Fees',role?:'fee'|'principal'):Tx=>({id,name:'Bank charge',bank:'CBE',accountMask:mask,amt,cat,date:'2026-11-06',time:'',ref:id,person:'',note:'',flag:false,sms:role?{sender:'CBE',reference:id,accountMask:mask,role}:undefined});
+const state=()=>({...fresh(),accounts:[{bank:'CBE',accountMask:'1***1569',bal:null,date:''},{bank:'CBE',accountMask:'1***2888',bal:null,date:''},{bank:'Telebirr',bal:null,date:''}],tx:[record('service',-500,'1***1569'),record('charge',-1200,'1***2888','Fees','fee'),record('principal',-300000,'1***2888','Other','principal')]});
+describe('account fee reporting',()=>{
+ it('separates account fees, includes zero-fee accounts, and never counts principal amounts',()=>{const s=state(),groups=feesByAccount(s.tx,s.accounts);expect(groups.map(a=>[a.label,a.total,a.rows.length])).toEqual([['CBE · 1569',500,1],['CBE · 2888',1200,1],['Telebirr',0,0]]);});
+ it('counts an identified SMS fee once after category edits and excludes credits and confirmed transfer legs',()=>{const s=state();s.tx=[{...s.tx[0],transfer:'own'},record('positive',500,'1***1569'),record('recat',-61,'1***2888','Food','fee')];expect(feesByAccount(s.tx,s.accounts).map(a=>a.total)).toEqual([0,61,0]);});
+ it('uses the Reports period and keeps undated-hour charges in their day totals',()=>{const s=state();s.tx.push({...record('oct',-900,'1***1569'),date:'2026-10-01'});expect(feesByAccount(periodRows(s),s.accounts).map(a=>a.total)).toEqual([500,1200,0]);s.period={scope:'Day',date:'2026-11-06',hour:'00'};expect(feesByAccount(periodRows(s),s.accounts)[0].total).toBe(500);s.period={scope:'Month',date:'2026-10-01',hour:'00'};expect(feesByAccount(periodRows(s),s.accounts)[0].total).toBe(900);});
+ it('preserves historical fees without guessing which masked account owned them',()=>{const s=state();s.tx.push(record('legacy',-25,''));const last=feesByAccount(s.tx,s.accounts).at(-1);expect(last).toMatchObject({label:'CBE · Unassigned',total:25});});
+ it('opens the exact matching fee rows and passes outgoing styling to every displayed total',()=>{const s=state(),open=vi.fn(),money=vi.fn((n:number|null,out?:boolean)=><span className={out?'out':''}>{n} ETB</span>);render(<FeeSummary s={s} rows={s.tx} money={money} open={open}/>);fireEvent.click(screen.getByRole('button',{name:/CBE · 2888/}));expect(open.mock.calls[0][0].rows.map((r:Tx)=>r.id)).toEqual(['charge']);expect(money.mock.calls.every(call=>call[1]===true)).toBe(true);expect(screen.getByText('-1200 ETB').className).toBe('out');});
+ it('does not put amounts into accessible text when hidden',()=>{const s=state();s.hidden=true;render(<FeeSummary s={s} rows={s.tx} money={()=> <span>•••• ETB</span>} open={vi.fn()}/>);expect(document.body.textContent).not.toContain('1200');expect(document.body.textContent).not.toContain('500');expect(screen.getAllByRole('button').every(b=>!b.getAttribute('aria-label')?.match(/1200|500/))).toBe(true);});
+});

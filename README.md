@@ -44,7 +44,7 @@ Configure **Reset password** similarly:
 <p>Enter this recovery code in BirrX: {{ .Token }}</p>
 ```
 
-Set email OTP expiry to 10 minutes, and configure custom SMTP before public registrations. Supabase’s built-in email service is restricted to project team addresses and has strict sending limits. See [email templates](https://supabase.com/docs/guides/auth/auth-email-templates) and [SMTP configuration](https://supabase.com/docs/guides/auth/auth-smtp). Account requests require internet; existing local finance tools work offline. Passwords and email codes are not saved by BirrX; Supabase’s SDK persists and refreshes the session on this device. Device sign-out removes that session without clearing finance records.
+Set email OTP expiry to 10 minutes, and configure custom SMTP before public registrations. Supabase’s built-in email service is restricted to project team addresses and has strict sending limits. See [email templates](https://supabase.com/docs/guides/auth/auth-email-templates) and [SMTP configuration](https://supabase.com/docs/guides/auth/auth-smtp). An internet connection is required each time BirrX opens or returns to the foreground, even with a saved sign-in. Financial data remains stored locally. Passwords and email codes are not saved by BirrX; Supabase’s SDK persists and refreshes the session on this device. Device sign-out removes that session without clearing finance records.
 
 The BirrX project is connected locally through ignored `.env.local`. Email sign-in and registration are enabled. Turn off Confirm email in the project dashboard for immediate registration. Recovery email codes and SMTP can be configured separately. Environment values must also be configured in Vercel for hosted builds.
 
@@ -82,7 +82,7 @@ The balance is the sum of latest account reports, independent of cash-flow total
 
 The Transactions calendar has a report account selector beside its date control. It filters the period totals, day counts and account activity together. It includes All, CBE, BOA and Telebirr; BOA is available for imported or manually added records.
 
-Transactions saves its own reporting period independently of Overview. Its calendar controls the calendar report, activity list and CSV export. The header calendar is hidden on Transactions; elsewhere it controls the Overview/Plan reporting period. Both period selections survive reloads.
+Transactions saves its own reporting period independently of Overview. Its calendar controls the calendar report, activity list and CSV export. The header calendar is hidden on Transactions; elsewhere it controls the Overview/Budgets reporting period. Both period selections survive reloads.
 
 Calendar cells show signed income and spending instead of transaction counts: daily totals in Month view, monthly totals in Year view, and hourly totals in Day view. Values are compact on screen, exact in accessible descriptions and report totals, red for spending, and hidden when amounts are hidden. Transactions without a time appear in the Unknown hour bucket.
 
@@ -98,7 +98,7 @@ Imports preview valid, invalid and duplicate rows. Duplicate identity is normali
 DEMO | Telebirr | Debit | 125.00 | Blue taxi | 2026-11-11 | DEMO-551
 ```
 
-Paste SMS now also recognizes the supplied CBE, BOA and Telebirr message structures. Select the actual sender (CBE, BOA, 127, 994, 251994, 810 or telebirr). Unknown structures remain in review; accepting a sender does not imply every message format from that sender is supported. Paste one sender's messages at a time. Multiple `Dear …` messages are split into individual previews. Supply the original SMS receipt date/time when the body has no date. No date is inferred from a reference, URL or expiry date. Native scanner callers can supply an ISO `receivedAt` timestamp with timezone; it is converted to EAT.
+Paste SMS recognizes the supplied CBE, BOA, Awash, Zemen Bank, Dashen Bank and Telebirr message structures. Select the actual sender (CBE, BOA, Awash Bank, Zemen Bank, Dashen Bank, 127, 994, 251994, 810 or telebirr). Local parsing first normalizes equivalent currency, account-label, digit, date and wording variants, then uses verified templates and a conservative field fallback. Failed/pending/reversed payments, conflicting fields and uncertain fee breakdowns stay in review. Reference-less CBE/BOA alerts require an account, precise timestamp and reported balance for a deterministic duplicate identity. Parser upgrades trigger a full deduplicated rescan without replacing edits. Unknown structures remain in review; accepting a sender does not imply every message format from that sender is supported. Paste one sender's messages at a time. Multiple `Dear …` messages are split into individual previews. Supply the original SMS receipt date/time when the body has no date. No date is inferred from a reference, URL or expiry date. Native scanner callers can supply an ISO `receivedAt` timestamp with timezone; it is converted to EAT.
 
 CBE and Telebirr principal amounts and separately stated charges create separate records. CBE totals are checked against principal + service charge + VAT + Disaster Recovery. BOA's maintenance debit already includes taxes; repeated generic and descriptive alerts with the same receipt reference become one enriched record. CBE receipt tokens preserve case. Reported bank balances only advance to newer known timestamps. Each bank currently maps to one owned account mask; another owned mask is held for review rather than combined silently.
 
@@ -106,7 +106,7 @@ CBE and Telebirr principal amounts and separately stated charges create separate
 
 Unrecognized messages can be reviewed manually. Only date/status metadata is retained. Raw pasted text and receipt images are never persisted; receipt links are parsed for identity without opening them. Tests use artificial names, account masks, phone numbers and references. Hide amounts masks text, chart values, chart geometry, accessible labels and monetary edit inputs. An explicitly requested CSV export still contains the filtered financial records. SMS imports add to the current workspace; they do not reset existing demo or edited records.
 
-The app is an installable Progressive Web App (PWA) with full offline caching via a Service Worker (`sw.js`). Static assets, layouts, styles, and cached data load instantly without an active internet connection on iOS Safari and Android Chrome/Edge.
+The app is an installable Progressive Web App (PWA) with static-file caching via a Service Worker (`sw.js`). Cached assets improve loading, but the app requires a successful connection check on launch and resume. The check sends no financial records and does not sign users out.
 
 ## Android Native Integration & SMS Inbox Scanning
 
@@ -170,7 +170,9 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 > **Google Play SMS Policy Restriction**
 > Google Play strictly limits the use of `android.permission.READ_SMS` and `android.permission.RECEIVE_SMS`. Apps published to the Google Play Store requesting these permissions must either be registered as the user's default SMS handler or qualify for specific financial transaction verification exceptions under the [Google Play Permissions Policy](https://support.google.com/googleplay/android-developer/answer/10208820).
 >
-> If distributing BirrX outside Google Play (such as direct APK installation, GitHub Releases, or F-Droid), no Google Play restriction applies and native SMS scanning works unrestricted.
+> Direct APK distribution is still subject to Android permissions, device security checks such as Play Protect, and applicable privacy requirements.
+
+See [PLAY_RELEASE.md](PLAY_RELEASE.md) for signing instructions, a draft SMS-permission declaration, and remaining Play Console work.
 
 ## Verification
 
@@ -190,11 +192,11 @@ Android app lock uses system fingerprint or device screen-lock authentication. I
 
 ### Android notifications
 
-Open Settings > Notifications, allow Android permission, then enable transaction, plan, goal and recurring-payment alerts separately. Send a test notification from the same screen.
+Open Settings > Notifications, allow Android permission, then enable transaction, budget, goal and recurring-payment alerts separately. Send a test notification from the same screen.
 
 Supported incoming financial SMS creates a private notification even while the app is closed (except when Android force-stops the app). Tap it to sync and open the matching transaction category editor; unsupported or ambiguous messages open Review. Historical inbox rescans do not send a notification per imported SMS. Manual entries/imports can also open their transaction from a notification.
 
-Plans alert at 80% and 100% of the current month's limit. Goals alert at 50% and completion, with weekly Monday reminders for unfinished goals. Recurring payments remind at 09:00 EAT the day before and on their due date, including a catch-up reminder for overdue items. Monthly planning reminders open Plan. Editing/deleting items refreshes pending reminders; reminders do not create transactions or goal contributions. Reminder scheduling is bounded to the next 60 alerts; reopen BirrX periodically to refresh the horizon. Android may delay these inexact reminders for battery saving. Notification text contains no amounts or personal names. Browser notification support is limited to the test action while open; background SMS/reminders use Android.
+Budgets alert at 80% and 100% of the current month's limit. Goals alert at 50% and completion, with weekly Monday reminders for unfinished goals. Recurring payments remind at 09:00 EAT the day before and on their due date, including a catch-up reminder for overdue items. Monthly budget reminders open Budgets. Editing/deleting items refreshes pending reminders; reminders do not create transactions or goal contributions. Reminder scheduling is bounded to the next 60 alerts; reopen BirrX periodically to refresh the horizon. Android may delay these inexact reminders for battery saving. Notification text contains no amounts or personal names. Browser notification support is limited to the test action while open; background SMS/reminders use Android.
 
 ## Awash SMS support
 
@@ -203,3 +205,9 @@ Awash/AwashBank senders support merchant parking payments, outgoing interbank tr
 Telebirr SMS parsing also supports the supplied Amharic person-to-person sends/receipts, transfers to CBE, and deposits from CBE. Fees remain separate expenses; loan due notices do not create payments. Other Amharic templates still need samples. This does not change the app interface language.
 
 Multiple accounts at the same bank are identified by the owned account mask in SMS messages, with separate reported balances and account filters (for example CBE · 1569 and CBE · 2888). CBE BranchReceipt credits and monthly service-fee alerts use the SMS receipt timestamp; a fee without a receipt uses a stable structured identifier. CSV exports include account_mask; include it when importing a bank with multiple accounts. Telebirr deposits from CBE and Bank of Abyssinia are supported.
+
+Android startup checks notification permission after sign-in and requests it once before SMS setup. After allowing notifications, unset alert types are enabled; existing Off preferences are retained. First-time SMS setup scans automatically once SMS access is granted, then offers Continue to BirrX. Scan failures offer recovery and users can continue without granting either permission.
+
+Android alerts are swipe-dismissible and request automatic cancellation 30 seconds after delivery (Android 8+). The in-app notification inbox is retained. Android/OEM accessibility and notification settings control heads-up visibility; BirrX cannot force a pop-up to remain visible for 30 seconds. A repeatable local Capacitor patch is applied by `npm install` and `npm run build`; keep `scripts/patch-notification-timeout.mjs` when updating native dependencies. Cash-flow axes use actual weekly/monthly income and spending, equally spaced adaptive ticks and headroom, with no fixed 50,000 ETB floor.
+
+Daily insights and Sunday weekly insights are enabled by default when Android notification permission is allowed. Both target 21:00 East Africa Time and can be disabled independently in Settings → Notifications. Native alarms re-arm after delivery and restore after reboot or clock/timezone changes; Sunday combines both summaries into one wake-up. Android battery restrictions can defer inexact alarms, and force-stopping the app prevents delivery until it is opened again. Alerts contain no precomputed financial totals: tapping opens Budgets → Reports with the original day or Monday–Sunday range and the latest local totals, categories, fees and activity. Home and Transactions periods are preserved. Notifications remain swipe-dismissible with the existing 30-second timeout.

@@ -1,0 +1,3 @@
+[functions.analyze-sms]
+# The handler verifies each bearer token with the BirrX project's Auth API.
+verify_jwt = false

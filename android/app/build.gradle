@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+def releaseStore = System.getenv('BIRRX_KEYSTORE_PATH')
+def releaseStorePassword = System.getenv('BIRRX_KEYSTORE_PASSWORD')
+def releaseAlias = System.getenv('BIRRX_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('BIRRX_KEY_PASSWORD')
+def releaseSigningValues = [releaseStore, releaseStorePassword, releaseAlias, releaseKeyPassword]
+def releaseSigningConfigured = releaseSigningValues.every { it != null && !it.isEmpty() }
+if (releaseSigningValues.any { it != null && !it.isEmpty() } && !releaseSigningConfigured) {
+    throw new GradleException('Set all four BIRRX_KEYSTORE_PATH, BIRRX_KEYSTORE_PASSWORD, BIRRX_KEY_ALIAS and BIRRX_KEY_PASSWORD variables.')
+}
 android {
     namespace = "com.birrx.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +25,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            release {
+                storeFile file(releaseStore)
+                storePassword releaseStorePassword
+                keyAlias releaseAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseSigningConfigured) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

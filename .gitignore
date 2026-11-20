@@ -6,3 +6,6 @@ dist/
 *.iml
 .env*
 !.env.example
+*.jks
+*.keystore
+android/key.properties

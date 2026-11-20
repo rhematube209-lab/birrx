@@ -62,5 +62,17 @@ it('does not propose ambiguous same-reference records',async()=>{const {transfer
 describe('weekly and monthly cash flow charts',()=>{
  it('groups months separately within the selected year',async()=>{const {cashFlowBuckets}=await import('./domain');const b=cashFlowBuckets(fresh().tx,'2026-11-01','Month');expect(b).toHaveLength(12);expect(totals(b[9].rows)).toEqual({inc:3100000,exp:750000,net:2350000});expect(totals(b[10].rows)).toEqual(totals(periodRows(fresh())));expect(b[0].rows).toHaveLength(0);});
  it('keeps weekly drilldowns in the anchor month',async()=>{const {cashFlowBuckets}=await import('./domain');const b=cashFlowBuckets(fresh().tx,'2026-11-01','Week');expect(b).toHaveLength(5);expect(b.flatMap(b=>b.rows).every(r=>r.date.startsWith('2026-11'))).toBe(true);expect(totals(b.flatMap(b=>b.rows))).toEqual(totals(periodRows(fresh())));});
- it('includes 10k, 20k and 50k ticks and never clips high totals',async()=>{const {cashFlowScale}=await import('./domain');expect(cashFlowScale([{inc:6300000,exp:0,net:6300000}])).toEqual({max:7000000,ticks:[0,1000000,2000000,5000000,7000000]});expect(cashFlowScale([]).max).toBe(5000000);});
+ it('scales equally spaced ticks from the larger of income and spending without a fixed 50k floor',async()=>{
+  const {cashFlowScale,cashFlowTick}=await import('./domain');
+  for(const peak of [1,50,5000,150000,6300000,950000000]){
+   const scale=cashFlowScale([{inc:0,exp:peak,net:-peak}]);
+   expect(scale.max).toBeGreaterThan(peak);expect(scale.ticks[0]).toBe(0);expect(scale.ticks.at(-1)).toBe(scale.max);
+   const step=scale.ticks[1];expect(scale.ticks.every((tick,i)=>Number.isInteger(tick)&&tick===i*step)).toBe(true);
+   expect(scale.ticks.length).toBeLessThanOrEqual(6);
+  }
+  expect(cashFlowScale([{inc:5000,exp:1000,net:4000}]).max).toBeLessThan(10000);
+  expect(cashFlowScale([{inc:5000,exp:1000,net:4000}])).toEqual(cashFlowScale([{inc:1000,exp:5000,net:-4000}]));
+  expect(cashFlowScale([])).toEqual(cashFlowScale([{inc:0,exp:0,net:0}]));
+  expect(cashFlowTick(25)).toBe('0.25');expect(cashFlowTick(250000)).toBe('2.5K');expect(cashFlowTick(250000000)).toBe('2.5M');
+ });
 });

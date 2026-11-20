@@ -15,7 +15,7 @@ final class NotificationChannels {
         if (Build.VERSION.SDK_INT < 26) return;
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         create(manager, TRANSACTIONS, "Transaction alerts");
-        create(manager, REMINDERS, "Plans, goals and payment alerts");
+        create(manager, REMINDERS, "Budgets, goals and payment alerts");
     }
     private static void create(NotificationManager manager, String id, String name) {
         if (manager.getNotificationChannel(id) != null) return;

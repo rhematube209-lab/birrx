@@ -3,11 +3,15 @@ export type Lang = 'English' | 'Amharic';
 export const i18n = {
   English: {
     // Tabs
+    Home: 'Home',
     Overview: 'Overview',
     Transactions: 'Transactions',
-    Plan: 'Plan',
+    Plan: 'Budgets',
+    Budgets: 'Budgets',
     People: 'People',
+    Profile: 'Profile',
     Note: 'Note',
+    Notes: 'Notes',
     Import: 'Import',
     Review: 'Review',
     Settings: 'Settings',
@@ -68,7 +72,7 @@ export const i18n = {
     AllAccounts: 'All accounts',
     NoPeopleMatch: 'No people match these filters.',
 
-    // Plan
+    // Budgets
     MonthlySpendingLimit: 'Monthly spending limit',
     CategoryLimits: 'Category limits',
     AddCategoryLimit: 'Add category limit',
@@ -94,6 +98,37 @@ export const i18n = {
     YourSpaceToRemember: 'Your space to remember',
     NoNotesYet: 'No notes yet. Keep a thought, plan, or reminder here.',
 
+    // Profile & Tools
+    YourProfile: 'Your profile',
+    ProfileTools: 'Profile tools',
+    QuickTools: 'Quick tools',
+    Inbox: 'Inbox',
+    Theme: 'Theme',
+    Notifications: 'Notifications',
+    Categories: 'Categories',
+    Save: 'Save',
+    Delete: 'Delete',
+    Cancel: 'Cancel',
+    Edit: 'Edit',
+    Clear: 'Clear',
+    Language: 'Language',
+    LanguageDesc: 'Choose your interface language',
+    SaveProfile: 'Save profile',
+    ProfileSavedOnDevice: 'Local profile · saved on this device',
+    Dismiss: 'Dismiss',
+    DismissAll: 'Dismiss all',
+    ConnectSms: 'Connect Android SMS',
+    ConnectSmsDesc: 'Scan CBE, BOA & Telebirr transactions',
+    GetStarted: 'Get started with BirrX',
+    GetStartedDesc: 'Add your accounts and transactions to see your finances here.',
+    AddAccount: 'Add account or wallet',
+    AddTransaction: 'Add transaction',
+    ReviewMetadata: 'Only review metadata is stored. Original message text was immediately discarded.',
+    FlaggedRecords: 'Flagged records',
+    UnmatchedMessages: 'Unmatched messages',
+    InReview: 'in review',
+    SafeNonFinancial: 'Dismiss safe non-financial messages (OTPs & Promos)',
+
     // Install & Device
     InstallBirrX: 'Install BirrX',
     InstallBirrXApp: 'Install BirrX App',
@@ -114,15 +149,37 @@ export const i18n = {
     CatHousing: 'Housing',
     CatUtilities: 'Utilities',
     CatFees: 'Fees',
-    CatOther: 'Other'
+    CatOther: 'Other',
+
+    // Settings & Sections
+    DeviceAndPwa: 'Device & PWA',
+    SecurityAndLock: 'Security and app lock',
+    AppLock: 'App lock',
+    HideAmounts: 'Hide amounts',
+    Permissions: 'Permissions',
+    AppSettings: 'App settings',
+    LegalAndPrivacy: 'Legal and privacy',
+    Privacy: 'Privacy',
+    TermsOfUse: 'Terms of use',
+    Timing: 'Timing',
+    StatsNotifications: 'Stats notifications',
+    TextSize: 'Text size',
+    Storage: 'Storage',
+    ReviewAccounts: 'Review your accounts',
+    ReferenceRates: 'Reference rates',
+    Calendar: 'Calendar'
   },
   Amharic: {
     // Tabs
+    Home: 'አጠቃላይ',
     Overview: 'አጠቃላይ',
     Transactions: 'ግብይቶች',
-    Plan: 'እቅድ',
+    Plan: 'በጀቶች',
+    Budgets: 'በጀቶች',
     People: 'ሰዎች',
+    Profile: 'መገለጫ',
     Note: 'ማስታወሻ',
+    Notes: 'ማስታወሻዎች',
     Import: 'አስመጣ',
     Review: 'ግምገማ',
     Settings: 'ቅንብሮች',
@@ -183,7 +240,7 @@ export const i18n = {
     AllAccounts: 'ሁሉም ሂሳቦች',
     NoPeopleMatch: 'ማጣሪያውን የሚያሟላ ሰው አልተገኘም።',
 
-    // Plan
+    // Budgets
     MonthlySpendingLimit: 'የወር የወጪ ገደብ',
     CategoryLimits: 'የምድብ ገደቦች',
     AddCategoryLimit: 'የምድብ ገደብ አክል',
@@ -209,6 +266,37 @@ export const i18n = {
     YourSpaceToRemember: 'የሚያስታውሱበት ቦታዎ',
     NoNotesYet: 'እስካሁን ምንም ማስታወሻ የለም። ሃሳብ፣ እቅድ ወይም ማስታወሻ እዚህ ያስቀምጡ።',
 
+    // Profile & Tools
+    YourProfile: 'የእርስዎ መገለጫ',
+    ProfileTools: 'የመገለጫ መሣሪያዎች',
+    QuickTools: 'ፈጣን መሣሪያዎች',
+    Inbox: 'የገቢ መልዕክት',
+    Theme: 'ገጽታ',
+    Notifications: 'ማሳወቂያዎች',
+    Categories: 'ምድቦች',
+    Save: 'አስቀምጥ',
+    Delete: 'ሰርዝ',
+    Cancel: 'ይቅር',
+    Edit: 'አርትዕ',
+    Clear: 'አጽዳ',
+    Language: 'ቋንቋ',
+    LanguageDesc: 'የመተግበሪያውን ቋንቋ ይምረጡ',
+    SaveProfile: 'መገለጫ አስቀምጥ',
+    ProfileSavedOnDevice: 'የግል መገለጫ · በዚህ መሣሪያ ላይ የተቀመጠ',
+    Dismiss: 'አስወግድ',
+    DismissAll: 'ሁሉንም አስወግድ',
+    ConnectSms: 'ኤስኤምኤስ አገናኝ',
+    ConnectSmsDesc: 'የCBE፣ የBOA እና የቴሌብር ግብይቶችን ይቃኙ',
+    GetStarted: 'በBirrX ይጀምሩ',
+    GetStartedDesc: 'ፋይናንስዎን እዚህ ለማየት ሂሳብዎን እና ግብይቶችን ያክሉ።',
+    AddAccount: 'ሂሳብ ወይም ዋሌት አክል',
+    AddTransaction: 'ግብይት አክል',
+    ReviewMetadata: 'የግምገማ መረጃ ብቻ ተቀምጧል። የመጀመሪያው መልዕክት ጽሑፍ ወዲያውኑ ተሰርዟል።',
+    FlaggedRecords: 'ምልክት የተደረገባቸው መዝገቦች',
+    UnmatchedMessages: 'ያልተዛመዱ መልዕክቶች',
+    InReview: 'በግምገማ ላይ',
+    SafeNonFinancial: 'አስተማማኝ የሆኑ የደህንነት እና የማስታወቂያ መልዕክቶችን ያስወግዱ',
+
     // Install & Device
     InstallBirrX: 'BirrXን ጫን',
     InstallBirrXApp: 'BirrX መተግበሪያን ጫን',
@@ -229,13 +317,31 @@ export const i18n = {
     CatHousing: 'ቤት/ኪራይ',
     CatUtilities: 'መገልገያዎች',
     CatFees: 'ክፍያዎች',
-    CatOther: 'ሌሎች'
+    CatOther: 'ሌሎች',
+
+    // Settings & Sections
+    DeviceAndPwa: 'መሣሪያ እና PWA',
+    SecurityAndLock: 'ደህንነት እና የመተግበሪያ ቁልፍ',
+    AppLock: 'የመተግበሪያ ቁልፍ',
+    HideAmounts: 'መጠኖችን ደብቅ',
+    Permissions: 'ፈቃዶች',
+    AppSettings: 'የመተግበሪያ ቅንብሮች',
+    LegalAndPrivacy: 'ህጋዊ እና ግላዊነት',
+    Privacy: 'ግላዊነት',
+    TermsOfUse: 'የአጠቃቀም ውሎች',
+    Timing: 'የሰዓት አቆጣጠር',
+    StatsNotifications: 'የስታቲስቲክስ ማሳወቂያዎች',
+    TextSize: 'የጽሑፍ መጠን',
+    Storage: 'ማከማቻ',
+    ReviewAccounts: 'ሂሳቦችዎን ይገምግሙ',
+    ReferenceRates: 'የምንዛሬ ተመኖች',
+    Calendar: 'የቀን መቁጠሪያ'
   }
 };
 
 export function t(lang: string = 'English', key: keyof typeof i18n['English']): string {
   const l = (lang === 'Amharic' ? 'Amharic' : 'English') as Lang;
-  return i18n[l][key] || i18n['English'][key] || String(key);
+  return i18n[l]?.[key] || i18n['English']?.[key] || String(key);
 }
 
 export function translateCategory(lang: string = 'English', cat: string): string {
@@ -251,4 +357,3 @@ export function translateCategory(lang: string = 'English', cat: string): string
   };
   return map[cat] || cat;
 }
-

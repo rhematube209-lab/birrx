@@ -1,5 +1,5 @@
 import {eatDate,totals,type State} from '../domain';
-export type NotificationTarget={kind:'transaction'|'goal'|'bill'|'plan'|'review';id?:string};
+export type NotificationTarget={kind:'transaction'|'goal'|'bill'|'plan'|'review'|'report';id?:string;period?:'day'|'week';date?:string};
 export type Reminder={key:string;title:string;body:string;at:Date;target:NotificationTarget};
 export const notificationKinds=['transactions','plans','goals','recurring'] as const;
 export const enabled=(s:State,kind:string)=>s.prefs['notify_'+kind]==='On';
@@ -15,7 +15,7 @@ export function reminderPlan(s:State,now=new Date()):Reminder[]{
   }
  }
  if(enabled(s,'goals')&&s.goals.some(g=>g.saved<g.target))for(let i=0;i<8;i++){const d=new Date(today+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+((8-d.getUTCDay())%7||7)+7*i);add('goal-week:'+d.toISOString().slice(0,10),'Check your goals','Take a moment to review your goals and add a contribution.',d.toISOString().slice(0,10),{kind:'plan',id:'Goals'});}
- if(enabled(s,'plans'))for(let i=1;i<=3;i++){const d=new Date(today+'T12:00:00Z');d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+i);add('plan-month:'+d.toISOString().slice(0,7),'Plan your month','Review your monthly limits and spending plan.',d.toISOString().slice(0,10),{kind:'plan',id:'Plan'});}
+ if(enabled(s,'plans'))for(let i=1;i<=3;i++){const d=new Date(today+'T12:00:00Z');d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+i);add('plan-month:'+d.toISOString().slice(0,7),'Review your budgets','Review your budgets and monthly spending limits.',d.toISOString().slice(0,10),{kind:'plan',id:'Plan'});}
  return result.sort((a,b)=>a.at.valueOf()-b.at.valueOf()).slice(0,60);
 }
 export function milestoneEvents(s:State,now=new Date()){

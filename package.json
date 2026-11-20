@@ -5,15 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "test": "vitest run"
+    "build": "node scripts/patch-notification-timeout.mjs && tsc -b && vite build",
+    "sync:android": "npm run build && npx cap sync android",
+    "test": "vitest run --testTimeout=15000",
+    "postinstall": "node scripts/patch-notification-timeout.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",
     "@capacitor/cli": "^8.6.0",
     "@capacitor/core": "^8.6.0",
     "@capacitor/filesystem": "8.1.5",
-    "@capacitor/local-notifications": "^8.3.1",
+    "@capacitor/local-notifications": "8.3.1",
     "@capacitor/share": "8.0.3",
     "@noble/hashes": "2.4.0",
     "@supabase/supabase-js": "2.119.0",

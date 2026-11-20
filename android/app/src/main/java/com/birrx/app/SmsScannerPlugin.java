@@ -30,8 +30,8 @@ public class SmsScannerPlugin extends Plugin {
 
     private static final Set<String> SUPPORTED_SENDERS = new HashSet<>(Arrays.asList(
         "CBE", "BOA", "127", "994", "251994", "810", "TELEBIRR",
-        "AWASH", "AWASHBANK", "AWASH_BANK", "DASHEN", "DASHENBANK", "COOP", "COOPBANK",
-        "HIBRET", "NIB", "WEGAGEN", "ZEMEN", "CBEBIRR", "844", "AMHARA", "SIINQEE"
+        "AWASH", "AWASHBANK", "AWASH_BANK", "DASHEN", "DASHENBANK", "DASHEN_BANK", "COOP", "COOPBANK",
+        "HIBRET", "NIB", "WEGAGEN", "ZEMEN", "ZEMENBANK", "ZEMEN_BANK", "CBEBIRR", "844", "AMHARA", "SIINQEE"
     ));
 
     private static SmsScannerPlugin instance;
@@ -77,6 +77,34 @@ public class SmsScannerPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void configureInsights(PluginCall call) {
+        android.content.SharedPreferences prefs = InsightReceiver.prefs(getContext());
+        boolean daily = call.getBoolean("daily", true), weekly = call.getBoolean("weekly", true);
+        boolean changed = !prefs.contains("daily") || prefs.getBoolean("daily", false) != daily || prefs.getBoolean("weekly", false) != weekly;
+        prefs.edit().putBoolean("daily", daily).putBoolean("weekly", weekly).apply();
+        if (changed) InsightReceiver.scheduleAll(getContext());
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getInsightHistory(PluginCall call) {
+        try { JSObject result = new JSObject(); result.put("items", new JSArray(InsightReceiver.prefs(getContext()).getString("history", "[]"))); call.resolve(result); }
+        catch (Exception e) { call.reject("Unable to read insight notifications", e); }
+    }
+
+    @PluginMethod
+    public void consumeInsightAction(PluginCall call) {
+        JSObject result = new JSObject();
+        android.content.Intent intent = getActivity().getIntent();
+        if (intent != null && intent.hasExtra("birrxInsightPeriod")) {
+            result.put("period", intent.getStringExtra("birrxInsightPeriod"));
+            result.put("date", intent.getStringExtra("birrxInsightDate"));
+            intent.removeExtra("birrxInsightPeriod"); intent.removeExtra("birrxInsightDate");
+        }
+        call.resolve(result);
+    }
+
+    @PluginMethod
     public void consumeNotificationAction(PluginCall call) {
         JSObject result = new JSObject();
         android.content.Intent intent = getActivity().getIntent();
@@ -93,6 +121,7 @@ public class SmsScannerPlugin extends Plugin {
     public void load() {
         super.load();
         NotificationChannels.ensure(getContext());
+        InsightReceiver.recover(getContext());
         instance = this;
     }
 
@@ -152,6 +181,24 @@ public class SmsScannerPlugin extends Plugin {
         ret.put("status", state.toString().toLowerCase());
         ret.put("granted", state == PermissionState.GRANTED);
         call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void readMessages(PluginCall call) {
+        if (getPermissionState("sms") != PermissionState.GRANTED) { call.reject("Allow SMS permission to analyze inbox messages."); return; }
+        JSArray ids = call.getArray("ids");
+        if(ids==null || ids.length()<1 || ids.length()>10){call.reject("Choose up to 10 inbox messages.");return;}
+        String[] args = new String[ids.length()];
+        for(int i=0;i<ids.length();i++){args[i]=ids.optString(i,"");if(!args[i].matches("[0-9]+")){call.reject("Invalid SMS identifier.");return;}}
+        String placeholders=String.join(",",java.util.Collections.nCopies(args.length,"?"));
+        JSArray messages=new JSArray();
+        try(Cursor cursor=getContext().getContentResolver().query(Uri.parse("content://sms/inbox"),new String[]{"_id","address","body","date"},"_id IN ("+placeholders+")",args,"date ASC, _id ASC")){
+            while(cursor!=null && cursor.moveToNext()){
+                String sender=cursor.getString(1);if(!isSupportedSender(sender))continue;
+                JSObject message=new JSObject();message.put("id",cursor.getString(0));message.put("sender",sender);message.put("body",cursor.getString(2));message.put("timestamp",cursor.getLong(3));messages.put(message);
+            }
+            JSObject result=new JSObject();result.put("messages",messages);call.resolve(result);
+        }catch(Exception e){call.reject("Unable to retrieve selected SMS messages.");}
     }
 
     @PluginMethod

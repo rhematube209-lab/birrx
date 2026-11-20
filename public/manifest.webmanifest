@@ -2,7 +2,7 @@
   "id": "/",
   "name": "BirrX — Ethiopian Personal Finance",
   "short_name": "BirrX",
-  "description": "Privacy-first, offline-ready Ethiopian personal finance and cash flow manager.",
+  "description": "Ethiopian personal finance and cash flow manager with records stored on your device.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

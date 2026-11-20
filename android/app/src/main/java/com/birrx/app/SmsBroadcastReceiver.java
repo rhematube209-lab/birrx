@@ -44,11 +44,12 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
         if (sender != null && SmsScannerPlugin.isSupportedSender(sender)) {
             SmsScannerPlugin.onIncomingSms(sender, fullBody.toString(), timestamp);
             if (context.getSharedPreferences("birrx-notifications", 0).getBoolean("transactions", false)
-                && fullBody.toString().matches("(?is).*(?:ልከዋል|አስተላልፈዋል|ተቀብለዋል|ተላልፏል|your payment of|transferred to other bank|has been credited to your account|debited with ETB|credited with ETB|debit transaction of ETB|You have (?:received\\s+ETB|transferred ETB|paid ETB|successfully transferred ETB|successfully paid a credit amount|repaid)).*")) {
+                && fullBody.toString().matches("(?is).*(?:ልከዋል|አስተላልፈዋል|ተቀብለዋል|ተላልፏል|your payment of|transferred to other bank|has been credited to your account|(?:debited|credited) with ETB|debit transaction of ETB|You have (?:received\\s+ETB|transferred ETB|paid ETB|successfully transferred ETB|successfully paid a credit amount|repaid)).*")) {
                 android.app.NotificationManager manager = (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
                 if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
                 NotificationChannels.ensure(context);
-                String bank = sender.toUpperCase(java.util.Locale.US).replace(" ", "").startsWith("AWASH") ? "Awash" : sender.equalsIgnoreCase("CBE") ? "CBE" : sender.equalsIgnoreCase("BOA") ? "BOA" : "Telebirr";
+                String normalizedSender = sender.toUpperCase(java.util.Locale.US).replaceAll("\\s+", "");
+                String bank = normalizedSender.startsWith("ZEMEN") ? "Zemen Bank" : normalizedSender.startsWith("DASHEN") ? "Dashen Bank" : sender.toUpperCase(java.util.Locale.US).replace(" ", "").startsWith("AWASH") ? "Awash" : sender.equalsIgnoreCase("CBE") ? "CBE" : sender.equalsIgnoreCase("BOA") ? "BOA" : "Telebirr";
                 Intent launch = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP).putExtra("birrxSmsTimestamp", timestamp).putExtra("birrxSmsBank", bank);
                 java.util.regex.Matcher reference = java.util.regex.Pattern.compile("(?:Your (?:telebirr )?transaction number is|by transaction number)\\s+([A-Za-z0-9-]+)|https://mbreciept\\.cbe\\.com\\.et/([A-Za-z0-9-]+)|https://cs\\.bankofabyssinia\\.com/slip/\\?trx=([A-Za-z0-9]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(fullBody);
                 if ("CBE".equals(bank)) {
@@ -83,7 +84,7 @@ public class SmsBroadcastReceiver extends BroadcastReceiver {
                     .setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle(TransactionAlert.title(fullBody.toString(), bank, context.getSharedPreferences("birrx-notifications", 0).getBoolean("hidden", true)))
                     .setContentText("Tap to categorize").setContentIntent(pending)
                     .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH).setDefaults(android.app.Notification.DEFAULT_ALL)
-                    .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true).build());
+                    .setVisibility(androidx.core.app.NotificationCompat.VISIBILITY_PRIVATE).setOngoing(false).setTimeoutAfter(30_000L).setAutoCancel(true).build());
             }
         }
     }

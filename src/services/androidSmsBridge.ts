@@ -21,6 +21,7 @@ export interface PermissionCheckResult {
 interface SmsScannerPluginNative {
   checkSmsPermission(): Promise<PermissionCheckResult>;
   requestSmsPermission(): Promise<PermissionCheckResult>;
+  readMessages(options:{ids:string[]}):Promise<{messages:RawSmsMessage[]}>;
   scanInbox(options: {
     sinceTimestamp?: number;
     afterTimestamp?: number;
@@ -109,3 +110,5 @@ export const subscribeToAppResume = (callback: () => void): (() => void) => {
   };
 };
 
+
+export async function readReviewMessages(ids:string[]){if(!isAndroidNative())throw Error("AI inbox analysis is available in the Android app.");if(!ids.length||ids.length>10||ids.some(id=>!/^\d+$/.test(id)))throw Error("Choose up to 10 inbox messages.");return (await SmsScannerNative.readMessages({ids})).messages;}

@@ -1,3 +1,4 @@
+import {bankLogo} from './bankBrand';
 import {Children,isValidElement,useEffect,useId,useRef,useState,type ReactNode,type SelectHTMLAttributes,type KeyboardEvent,type CSSProperties} from 'react';
 import {createPortal} from 'react-dom';
 import {Check,ChevronDown,Search,X,Wallet,ArrowDownLeft,ArrowUpRight,ArrowLeftRight,Clock,CalendarDays,Tag,Smartphone} from 'lucide-react';
@@ -8,8 +9,8 @@ function textOf(node:ReactNode):string{return Children.toArray(node).map(child=>
 function optionsOf(children:ReactNode,group?:string):PickerOption[]{return Children.toArray(children).flatMap(child=>{if(!isValidElement<{children?:ReactNode;value?:string;label?:string;disabled?:boolean}>(child))return [];if(child.type==='optgroup')return optionsOf(child.props.children,child.props.label);if(child.type==='option'){const label=textOf(child.props.children);return [{value:String(child.props.value??label),label,group,disabled:child.props.disabled}];}return optionsOf(child.props.children,group);});}
 function decorate(option:PickerOption,kind:string):PickerOption{
  if(option.icon)return option;
- const bank=option.value.split('|')[0].toLowerCase(),logo=bank.startsWith('awash')?'/banks/awash.webp':bank.includes('telebirr')||bank==='127'?'/banks/telebirr.webp':bank==='boa'?'/banks/boa.webp':bank==='cbe'?'/banks/cbe.webp':null;
- if(kind==='account')return {...option,icon:logo?<img src={logo} alt=""/>:<Wallet size={21}/>,description:option.value==='All'?'Every linked bank and wallet':bank==='127'?'Telebirr transaction messages':bank==='cbe'?'Commercial Bank of Ethiopia':bank==='boa'?'Bank of Abyssinia':bank.startsWith('awash')?'Awash Bank':bank.includes('telebirr')?'Mobile wallet':'Account or SMS provider'};
+ const bank=option.value.split('|')[0].toLowerCase(),logo=bankLogo(bank);
+ if(kind==='account')return {...option,icon:logo?<img src={logo} alt=""/>:<Wallet size={21}/>,description:option.value==='All'?'Every linked bank and wallet':bank==='127'?'Telebirr transaction messages':bank==='cbe'?'Commercial Bank of Ethiopia':bank==='boa'?'Bank of Abyssinia':bank.startsWith('zemen')?'Zemen Bank':bank.startsWith('dashen')?'Dashen Bank':bank.startsWith('awash')?'Awash Bank':bank.includes('telebirr')?'Mobile wallet':'Account or SMS provider'};
  if(kind==='direction'){const out=['Out','Debit','Money out'].includes(option.value),incoming=['In','Credit','Money in'].includes(option.value);return {...option,icon:out?<ArrowUpRight className="out"/>:incoming?<ArrowDownLeft/>:<ArrowLeftRight/>,description:out?'Outgoing transactions':incoming?'Incoming transactions':option.value==='Transfers'?'Confirmed own-account transfers':'All transaction directions'};}
  return {...option,icon:/^\d\d$|Unknown/.test(option.value)?<Clock size={20}/>:['Year','Month','Day','Hour'].includes(option.value)?<CalendarDays size={20}/>:<Tag size={20}/>};
 }
