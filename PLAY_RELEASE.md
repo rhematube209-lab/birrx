@@ -33,3 +33,67 @@ Run `npm install`, `npm run build`, `npx cap sync android`, then from `android` 
 - Finish real-device testing of the AI flow and verify the deployed function and usage quota. The function rejects unauthenticated calls; a complete authenticated Gemini test is still needed.
 - Test a signed release on real devices, including both SMS permission choices, onboarding, notifications, dark theme, app lock and multi-account balances. Confirm review access works without requiring Google reviewers to supply their own banking messages.
 - If Google Play Protect incorrectly blocks a verified release, use Google's developer appeal process: https://support.google.com/googleplay/answer/2812853. Do not describe signing or policy compliance as a guarantee that the warning will disappear.
+
+## AdMob onboarding and first placement
+
+Status: account creation, advertising SDK integration, consent testing and live ad serving are not complete. The current app does not request AdMob ads. Do not mark the existing build as containing an advertising SDK before one is actually integrated.
+
+Owner setup:
+
+1. Open https://admob.google.com/ and create the account using your actual country, identity and payment information. The owner must accept Google's terms and complete any verification.
+2. In Apps, add an Android app named BirrX. If it is not published yet, select the unpublished option. The Android package is `com.birrx.app`.
+3. Create a Banner ad unit named `Reports banner`. Record the App ID (`ca-app-pub-…~…`) and ad-unit ID (`ca-app-pub-…/…`). These identifiers are public configuration, not account credentials.
+4. Configure Privacy & messaging for the audience and applicable regions. Review Google's UMP consent requirements before requesting ads.
+5. After publishing, link the supported store listing, configure the developer website and its `app-ads.txt` using Google's exact publisher record, and complete app readiness verification. Do not publish invented publisher IDs.
+
+Initial integration specification:
+
+- One clearly labelled Sponsored banner beneath Reports content, including daily/weekly insight reports. No ads over financial controls or bottom navigation, and none in authentication, app lock, SMS permission or categorization flows.
+- Development must use Google's demo App ID `ca-app-pub-3940256099942544~3347511713` and demo banner unit `ca-app-pub-3940256099942544/9214589741`. Demo ads earn no revenue. Verify current IDs at https://developers.google.com/admob/android/test-ads before implementation.
+- Keep SMS bodies and SMS-derived balances, transaction amounts, categories, account identifiers and counterparties out of ad requests, targeting, logs and SDK bridges. Ad rendering must receive placement/layout information only.
+- Obtain required consent before initializing/requesting ads, expose privacy choices where required, and handle denied consent, offline state and no-fill without blocking finance features.
+- Before live release, inspect actual SDK data collection, update the privacy policy and Play Data Safety answers, set the Play Console Contains ads declaration, and test with the appropriate test-device configuration. A paid Remove ads product is a separate future integration.
+
+## Store listing draft
+
+**App name:** BirrX
+
+**Short description:** Track Ethiopian bank accounts, wallets, spending, budgets and savings goals.
+
+**Full description:**
+
+BirrX helps you understand your everyday money across supported Ethiopian banks and mobile wallets.
+
+Track income, spending and reported account balances. Review transactions, choose categories, set monthly budgets, contribute to savings goals and manage recurring commitments. Explore cash-flow and category reports, with daily and weekly insight reminders.
+
+On Android, optional SMS access imports supported financial messages on your device. Manual entry, CSV and pasted-message import are also available. Unrecognized messages stay in review; optional AI analysis requires a separate confirmation before selected, masked message content is sent for analysis.
+
+Choose English or Amharic, light or dark appearance, adjustable text sizes, and Gregorian or Ethiopian date display. Protect access with the supported Android device app lock and export backups when needed.
+
+BirrX is a personal finance tracker, not a bank, lender or payment service. Reported balances come from available records and are not a live bank connection. Internet access is required when opening the app. Available SMS formats and device features vary.
+
+Before submission: supply a support contact, public privacy-policy URL, account-deletion URL and reviewer access; verify every listed feature on the final signed build. Add advertising disclosures when the ad-enabled build is ready. This draft has not been published or submitted.
+
+## Release preparation status — 21 November 2026
+
+Publisher: Tameru. Support/privacy/deletion contact: rhematube209@gmail.com.
+
+Prepared public pages: `public/privacy.html` and `public/delete-account.html`. After deploying the website, use its actual HTTPS origin plus `/privacy.html` and `/delete-account.html` in Play Console. These files are not a claim that the pages have been published. Check both URLs without signing in before submission.
+
+The app includes Profile → BirrX account → Request account deletion. This opens an email draft, explicitly explains that the user must send it, and does not pretend deletion has already happened. The external deletion page offers the same path without requiring app installation.
+
+Owner handling for email deletion requests: verify ownership via the registered address or a proportionate alternative; never request a password, OTP or banking statement. Delete the verified Auth user and associated per-user AI usage counters using server/admin access, record completion without retaining the request's financial content, and reply to the requester. Do not claim completion before processing succeeds. Explain that local app storage on every device, original SMS and exported backups require separate user/device action. Establish and publish your actual support response/retention practice before submitting; no invented processing deadline is stated.
+
+An optional automated self-deletion backend is prepared, not deployed: run `supabase/migrations/202611210001_account_deletion.sql` after the existing quota migration; deploy `delete-account` using `releases/ai-deployment/delete-account.ts`. It validates the current bearer token through Auth, ignores caller-supplied user IDs, requires explicit DELETE confirmation, removes per-user usage and then hard-deletes that authenticated account. Never put a service-role key in the app. Test with a disposable account before connecting an automated frontend. Existing access JWTs can survive until expiry; privileged BirrX functions must continue verifying the user with Auth on every request.
+
+Still required before release: public website deployment and working page URLs; owner review of privacy/provider retention and Data Safety answers; manual deletion-request handling test with a disposable account; reviewer access credentials; final real-device SMS, notifications, lock, language/calendar and upgrade-data checks; signed AAB verification and Play Console declarations. Ads remain postponed and no advertising SDK has been added.
+
+## BirrX public release URLs
+
+Website: https://birrx-sigma.vercel.app/
+
+Privacy policy: https://birrx-sigma.vercel.app/privacy.html
+
+Account deletion: https://birrx-sigma.vercel.app/delete-account.html
+
+These are the intended Play Console URLs. The pages are prepared in this checkout but must be deployed and checked anonymously before submission. Do not treat the URLs as verified live merely because the website domain exists.

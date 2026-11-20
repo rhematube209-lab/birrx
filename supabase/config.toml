@@ -1,3 +1,7 @@
 [functions.analyze-sms]
 # The handler verifies each bearer token with the BirrX project's Auth API.
 verify_jwt = false
+
+[functions.delete-account]
+# The handler validates the bearer token against Auth and ignores caller-supplied user IDs.
+verify_jwt = false
