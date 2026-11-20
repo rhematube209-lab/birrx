@@ -9,3 +9,5 @@ dist/
 *.jks
 *.keystore
 android/key.properties
+
+supabase/.temp/
