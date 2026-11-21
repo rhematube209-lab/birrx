@@ -1,0 +1,4 @@
+date,bank,merchant,direction,amount,reference,category
+2026-11-21,CBE,Demo income,Credit,5000.00,PLAY-DEMO-001,Income
+2026-11-21,CBE,Demo groceries,Debit,450.00,PLAY-DEMO-002,Food
+2026-11-21,Telebirr,Demo transport,Debit,80.00,PLAY-DEMO-003,Transport

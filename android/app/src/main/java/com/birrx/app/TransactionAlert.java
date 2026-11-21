@@ -4,7 +4,7 @@ import java.util.regex.*;
 final class TransactionAlert {
     static String title(String raw, String bank, boolean hidden) {
         String text = raw.replaceAll("\\s+", " ");
-        boolean outgoing = Pattern.compile("ልከዋል|አስተላልፈዋል|your payment of|transferred|\\bpaid\\b|repaid|debited|debit transaction", Pattern.CASE_INSENSITIVE).matcher(text).find();
+        boolean outgoing = Pattern.compile("ልከዋል|አስተላልፈዋል|your payment of|transferred|\\bbought\\b|\\bpaid\\b|repaid|debited|debit transaction", Pattern.CASE_INSENSITIVE).matcher(text).find();
         Matcher amount = Pattern.compile("(?:ETB\\s*([0-9][0-9,]*(?:\\.[0-9]{1,2})?)|repaid\\s+([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s+ETB)", Pattern.CASE_INSENSITIVE).matcher(text);
         String value = "";
         if (amount.find()) {
@@ -16,6 +16,12 @@ final class TransactionAlert {
         Matcher account = Pattern.compile((outgoing ? "to" : "from") + " account\\s+[0-9*]+\\s*\\(([^)]+)\\)", Pattern.CASE_INSENSITIVE).matcher(text);
         if (peer.find()) person = peer.group(1).trim();
         else if (account.find()) person = account.group(1).trim();
+        if ("CBE Birr".equals(bank)) {
+            Matcher cbAmount=Pattern.compile("(?:transferred|bought|credited with)\\s+([0-9][0-9,]*(?:\\.[0-9]{1,2})?)\\s*Br",Pattern.CASE_INSENSITIVE).matcher(text);
+            if(cbAmount.find()){try{value=new java.math.BigDecimal(cbAmount.group(1).replace(",", "")).stripTrailingZeros().toPlainString();}catch(NumberFormatException ignored){}}
+            Matcher cbPeer=Pattern.compile(outgoing?"to\\s+[0-9*]+-(.+?)\\s+on\\s":"from\\s+(.+?)\\s+on\\s",Pattern.CASE_INSENSITIVE).matcher(text);
+            if(cbPeer.find())person=cbPeer.group(1).trim();
+        }
         if ("Awash".equals(bank)) {
             Matcher parking = Pattern.compile("your payment of\\s*([0-9,.]+)\\s+ETB to\\s+(.+?)\\s+is successful",Pattern.CASE_INSENSITIVE).matcher(text);
             Matcher recipient = Pattern.compile("To\\s+[0-9*]+\\s*\\(([^)]+)\\)",Pattern.CASE_INSENSITIVE).matcher(text);

@@ -1,0 +1,25 @@
+BIRRX DATA SAFETY — BUILD 1.0 / VERSION CODE 1
+This is an implementation-based draft for owner review, not a submitted certification. Check the actual Supabase and Gemini project settings and terms before answering provider-dependent sharing/retention questions.
+
+Does the app collect user data off device? YES. Email/password Auth sends data to Supabase, and optional AI sends selected financial content through Supabase to Google Gemini. Do not select No data collected merely because normal transaction records remain local.
+
+DATA TYPE                         COLLECTION AND PURPOSE
+Email address                     Required for account management and sign-in (Supabase).
+Name                              Profile name submitted on registration; account management. AI financial content may also contain counterparty names (optional AI functionality).
+User IDs                          Auth identity and per-user AI quota accounting; account management, functionality and abuse prevention.
+Other financial information       Optional AI-selected amounts, balances, transaction context. App functionality only, not ads. Assess purchase history too when purchase/merchant information is transmitted.
+SMS or MMS                        Optional selected financial SMS content for AI parsing. Masking numbers and removing links does not make content anonymous. Never transmit OTPs, security messages, promotions or non-financial personal history.
+Other user-generated content      Check whether any selected AI context includes user text beyond the financial/SMS types above; disclose if applicable. Ordinary notes, budgets and goals are local in this build.
+
+Local-only SMS parsing and local finance storage are not off-device collection by themselves. Optional off-device transmission still must be disclosed. Only claim ephemeral processing if every relevant provider actually meets Play's definition; no such guarantee has been verified here.
+
+SHARING
+Confirm whether Supabase and the configured Gemini service qualify for Play's service-provider exception under the account's actual terms. Do not automatically answer No sharing without checking Gemini plan/data-use terms, and do not describe the feature as anonymous or zero retention. No advertising SDK or sale of SMS data is present. No financial data is passed to ads.
+
+SECURITY AND DELETION
+App endpoints use HTTPS. Public Supabase configuration is packaged in the app; admin/service and Gemini keys stay server-side. Native device lock limits access but is not database/export encryption. Account deletion is available in-app and at https://birrx-sigma.vercel.app/delete-account.html. Deletion clears the authenticated server account, per-user AI counters and the current user's local workspace; other devices, original SMS and exported files need separate removal. Supabase/provider operational retention must be reviewed by the owner.
+
+SDK/PERMISSION INSPECTION
+Merged release manifest includes READ_SMS, RECEIVE_SMS, POST_NOTIFICATIONS, INTERNET, RECEIVE_BOOT_COMPLETED, USE_BIOMETRIC and WAKE_LOCK. No contacts, location, camera or advertising-ID permission is present in the inspected merged manifest. No AdMob dependency is integrated. Reassess Data safety whenever an SDK or ad feature changes.
+
+Source: https://support.google.com/googleplay/android-developer/answer/10787469

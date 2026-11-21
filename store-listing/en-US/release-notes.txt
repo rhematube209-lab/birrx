@@ -1,0 +1,4 @@
+<en-US>
+Welcome to BirrX.
+Track supported Ethiopian accounts and wallets, categorize spending, manage budgets and savings goals, and explore cash-flow reports. Optional SMS import, transaction reminders, English and Amharic, and light and dark themes are included.
+</en-US>

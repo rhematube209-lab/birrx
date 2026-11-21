@@ -1,0 +1,63 @@
+BIRRX — PLAY CONSOLE COPY AND UPLOAD GUIDE
+Prepared 21 November 2026. This package has not been uploaded or submitted.
+
+MAIN STORE LISTING
+App name: BirrX
+Default listing language: English (United States)
+Category: Finance
+App type: App
+Price: Free
+Contains ads: No (no advertising SDK in this build)
+Support email: rhematube209@gmail.com
+Website: https://birrx-sigma.vercel.app/
+Privacy policy: https://birrx-sigma.vercel.app/privacy.html
+Account deletion: https://birrx-sigma.vercel.app/delete-account.html
+
+Copy en-US/short-description.txt and en-US/full-description.txt into their corresponding fields. Character counts are recorded in listing.json. Upload assets/play-icon-512.png and assets/feature-graphic-1024x500.png. The feature graphic is promotional art, not an app screenshot.
+
+PHONE SCREENSHOTS — STILL REQUIRED
+Capture at least two real screenshots from the signed release with synthetic data only. Recommended four: Home and cash flow; transaction list/category sheet; Budgets/goals; Reports. Use a test account and reviewer-demo.csv or manual demo entries. Do not upload screenshots of real account balances, SMS, names, phone numbers or review inbox contents. Suggested capture size: 1080x1920 portrait PNG. Use matching English UI for this listing. Capture after permission dialogs and toast banners close. Do not substitute the feature graphic for screenshots.
+
+APP ACCESS
+Select that some/all functionality is restricted by sign-in. Create a dedicated reviewer account in BirrX; enter its real email and password privately in Play Console, not in this repository. Keep it active without app lock, OTP requirements, payment, expiry or a requirement for your assistance. Registration confirmations are currently disabled. Do not claim a reviewer account has already been created.
+
+Paste these instructions after supplying the credentials:
+1. Connect to the internet, open BirrX and sign in with the provided test credentials.
+2. Allow or decline notifications. On the SMS disclosure choose Use manually to enter the app without providing a personal SMS inbox. No bank account or payment is required.
+3. From Profile → Import, choose Manual and add a demo Credit transaction of 5000 ETB to CBE dated 21 November 2026; add a demo Debit of 450 ETB with category Food. These are fictional examples only. The supplied reviewer-demo.csv contains equivalent sample records if CSV import is preferred.
+4. Set the Home reporting period to November 2026. Open Transactions, Reports and Budgets to review the features. Profile contains categories, appearance, notes, accounts and inbox review.
+5. SMS import is optional and device-specific. The supplied SMS demo video should show supported synthetic messages arriving, scan results, transaction categorization, and the permission-denied manual route. Do not require a reviewer to have Ethiopian banking SMS.
+6. Delete the disposable account through Profile → BirrX account → Delete account, using the current password and explicit DELETE confirmation, only after other review is complete. The external deletion page offers access without SMS onboarding.
+
+SMS PERMISSIONS DECLARATION
+Requested permissions: READ_SMS and RECEIVE_SMS.
+Core-use exception requested: SMS-based money management.
+Explanation to paste:
+BirrX is a personal-finance and budgeting app for Ethiopian bank accounts and mobile wallets. With the user's permission it reads supported financial senders to import existing transactions, reported balances and mobile-package information, and receives new financial SMS to update records and notify users to categorize transactions. Parsing is on-device. It is not a default SMS app and does not send SMS or access contacts. Unmatched messages are reviewed. Manual and CSV import work without SMS permission. Optional AI analysis of eligible financial messages has a separate disclosure and affirmative consent, masks full account/phone numbers and removes links before transmission via Supabase to Gemini, and requires confirmation before saving results. SMS data is not used for advertising.
+
+Supply an owner-recorded reviewer video link showing disclosure → grant permission → synthetic inbox import → new SMS and categorization → review inbox → AI consent → permission-denied manual alternative. Approval is Google's decision; do not submit without a demonstrable core SMS use case.
+
+FINANCIAL FEATURES
+Describe BirrX as personal budgeting, expense tracking and savings-goal tracking. Choose the matching current form options. It does not provide lending, bank accounts, payments, money transmission, brokerage, cryptocurrency, financial advice or interest-bearing savings products. Tracking a loan repayment is not offering a loan. Complete the declaration even for testing tracks if prompted.
+
+CONTENT RATING / AUDIENCE
+Complete the IARC questionnaire based on the actual app. Do not invent a rating. Select the intended audience honestly; an adult personal-finance audience is recommended unless you deliberately plan to serve minors. Select the countries you intend to support. No ads are included. Complete any AI-generated-content questions for the optional AI parsing feature accurately.
+
+FIRST UPLOAD
+1. In Testing → Internal testing, create a release and configure Play App Signing.
+2. Upload releases/android/BirrX-1.0-v1-a788459-working-release.aab (version 1.0, code 1). No earlier build has been uploaded per owner confirmation.
+3. Add the prepared release notes, review Console warnings and complete required app-content forms. Resolve any permission or target-device warnings before rollout.
+4. Add testers and test the Play-installed build. An internal test does not automatically satisfy production-access requirements; follow the testing requirements displayed for your developer account.
+5. Keep production submission separate until screenshots, working reviewer credentials/video, Data safety/provider terms and public email recovery are ready.
+
+IMPORTANT RELEASE LIMITS
+Resend/custom SMTP is postponed. Supabase's default sender is restricted to team email addresses and two emails per hour at present. Account creation without email confirmation works, but public password recovery is not ready for general users; configure email delivery before public launch.
+Export a backup before replacing an Android Studio debug install. This signed release cannot update an install with a different signing certificate. Do not uninstall without a backup. Future APK updates must keep the same release key. Play may use its own app-signing key; Play updates need not install over upload-key-signed sideloads.
+
+SOURCES
+https://support.google.com/googleplay/android-developer/answer/9859152
+https://support.google.com/googleplay/android-developer/answer/9866151
+https://support.google.com/googleplay/android-developer/answer/10208820
+https://support.google.com/googleplay/android-developer/answer/13849271
+https://support.google.com/googleplay/android-developer/answer/15748846
+https://developer.android.com/studio/publish/app-signing

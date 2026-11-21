@@ -52,7 +52,7 @@ describe('package and airtime notices',()=>{
  it('does not attach an undated-plan exhaustion to a future or expired activation',()=>{const s=commitSms(empty(),previewSms([{sender:'994',body:activation}],empty()));expect(previewSms([{sender:'251994',body:finished,date:'2026-11-10'}],s)[0].status).toBe('Needs review');expect(previewSms([{sender:'251994',body:finished,date:'2026-11-13'}],s)[0].status).toBe('Needs review');});
  it('parses combined data and SMS allowances and does not revive expired packages',()=>{const body='Dear customer Your Weekly Holiday 2423MB and 23SMS from telebirr to be expired after 7days will be expired on 2026-10-08 at 17:34:21. Ethio telecom';const p=parseSms({sender:'251994',body,date:'2026-10-07'});expect(p.package?.size).toBe('2423 MB + 23 SMS');const s=commitSms(empty(),previewSms([{sender:'994',body:activation}],empty()));expect(activePackages(s,'2026-11-13T00:00:00')).toHaveLength(0);});
  it('treats prepaid recharge as an airtime snapshot, not income or spending',()=>{const e={sender:'251994',body:'Dear Customer Your prepaid account has been recharged successfully. Your Recharged balance is 5.00 Birr. Your balance is 5.00 Birr. Ethio telecom',date:'2026-11-11',time:'15:00:00'};const next=commitSms(empty(),previewSms([e,e],empty()));expect(next.airtime?.balance).toBe(500);expect(next.tx).toHaveLength(0);expect(next.accounts).toHaveLength(0);});
- it('routes unsupported senders and unknown financial templates to review',()=>{expect(previewSms([{sender:'Someone',body:tele()}],empty())[0].status).toBe('Needs review');expect(previewSms([{sender:'810',body:'A promotion: recharge now for 100% bonus'}],empty())[0].status).toBe('Needs review');});
+ it('routes unsupported senders and unknown financial templates to review',()=>{expect(previewSms([{sender:'Someone',body:tele()}],empty())[0].status).toBe('Needs review');expect(previewSms([{sender:'810',body:'A promotion: recharge now for 100% bonus'}],empty())[0].status).toBe('Ignored');});
 });
 
 
@@ -141,9 +141,9 @@ describe('extended Ethiopian banking formats and review classification', () => {
     expect(awash.provider).toBe('Awash');
 
     const cbebirr = classifySmsReview({ sender: '844', body: 'You have paid 150 ETB to merchant.' });
-    expect(cbebirr.category).toBe('unsupported');
-    expect(cbebirr.reason).toBe('unsupported_sender');
-    expect(cbebirr.reasonLabel).toContain('CBE Birr');
+    expect(cbebirr.category).toBe('action_required');
+    expect(cbebirr.reason).toBe('missing_reference');
+    expect(cbebirr.reasonLabel).toContain('Missing Reference');
 
     const unknown = classifySmsReview({ sender: 'CBE', body: 'Some unrecognized future CBE alert without transaction structure' });
     expect(unknown.category).toBe('action_required');
@@ -156,7 +156,7 @@ describe('extended Ethiopian banking formats and review classification', () => {
       { sender: 'AWASH', body: 'Dear customer your account was credited' }
     ], empty());
 
-    expect(previews[0].status).toBe('Needs review');
+    expect(previews[0].status).toBe('Ignored');
     expect(previews[0].classification?.category).toBe('security');
     expect(previews[0].classification?.reason).toBe('otp_security');
 

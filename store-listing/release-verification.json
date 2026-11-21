@@ -1,0 +1,34 @@
+{
+  "sourceCommit": "a788459",
+  "versionName": "1.0",
+  "versionCode": 1,
+  "packageName": "com.birrx.app",
+  "minSdk": 24,
+  "targetSdk": 36,
+  "signed": true,
+  "apkVerified": "apksigner v2",
+  "aabVerified": "jarsigner",
+  "certificateMatchesExistingUploadCertificate": true,
+  "certificateSHA256": "940df44ff89532e734d0c21084da1847981aaff0aa3fad83675522cbf5b0c956",
+  "appTestsPassed": 285,
+  "apkAndAabWebIndexMatchesProductionBuild": true,
+  "artifacts": {
+    "BirrX-1.0-v1-a788459-working-release.aab": {
+      "bytes": 4168537,
+      "sha256": "8850b4031d1585041fac05d075c0a8d6071d8581d2914e421c398f726fda36fa"
+    },
+    "BirrX-1.0-v1-a788459-working-release.apk": {
+      "bytes": 4412782,
+      "sha256": "6c3cbee9436961a2ef0d48d3d137d90102292d1c162d8a537c5ccb828ed49a79"
+    }
+  },
+  "playConsoleSubmitted": false,
+  "remaining": [
+    "real phone screenshots",
+    "dedicated reviewer credentials in Play Console",
+    "SMS demo video",
+    "provider Data safety and retention review",
+    "custom SMTP before public password recovery"
+  ],
+  "sourceState": "Base commit a788459 plus the owner-screenshot, SMS filtering and CBE Birr changes committed alongside this record"
+}

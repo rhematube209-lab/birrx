@@ -11,3 +11,6 @@ dist/
 android/key.properties
 
 supabase/.temp/
+
+# Signed distributables are delivered locally, not committed.
+releases/android/

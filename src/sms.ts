@@ -1,3 +1,4 @@
+import {isNonFinancialReview} from './smsReview';
 import {cents,eatDate,key,preview as legacyPreview,uid,validDate,rememberedCategory,type State,type Tx} from './domain';
 import {flexibleBankAlert,normalizeBankWording,bankAlertDate,assertSingleBankAlert,transferBankNames,transferBankLabel} from './smsFields';
 
@@ -7,9 +8,9 @@ type PackageNotice={name:string;type:string;size:string;end?:string;endTime?:str
 export type ParsedSms={provider:string;identity:string;at:string;date:string;time:string;records:Tx[];balance?:number;balanceReceivedAt?:number;accountMask?:string;package?:PackageNotice;airtime?:number;issue?:string};
 export type SmsReviewReason='otp_security'|'promotional'|'service_notice'|'unsupported_sender'|'missing_reference'|'missing_date'|'unmatched_package'|'account_conflict'|'format_unrecognized';
 export interface SmsReviewClassification{reason:SmsReviewReason;reasonLabel:string;actionHint:string;category:'security'|'promo'|'service'|'unsupported'|'action_required';provider?:string;sender:string;}
-export type SmsPreview={message:number;status:'Ready'|'Update'|'Duplicate'|'Needs review';parsed?:ParsedSms;issue?:string;classification?:SmsReviewClassification};
+export type SmsPreview={message:number;status:'Ready'|'Update'|'Duplicate'|'Needs review'|'Ignored';parsed?:ParsedSms;issue?:string;classification?:SmsReviewClassification};
 const amount='([\\d,]+(?:\\.\\d{1,2})?)(?![\\d,]|\\.\\d)';
-const supported=new Set(['AWASH','AWASHBANK','AWASH_BANK','ZEMEN','ZEMENBANK','ZEMEN_BANK','DASHEN','DASHENBANK','DASHEN_BANK','CBE','BOA','127','994','251994','810','TELEBIRR']);
+const supported=new Set(['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844','AWASH','AWASHBANK','AWASH_BANK','ZEMEN','ZEMENBANK','ZEMEN_BANK','DASHEN','DASHENBANK','DASHEN_BANK','CBE','BOA','127','994','251994','810','TELEBIRR']);
 
 export const KNOWN_UNSUPPORTED_SENDERS:Record<string,{name:string;kind:'bank'|'wallet'}>={
  'COOP':{name:'Cooperative Bank of Oromia',kind:'bank'},
@@ -50,37 +51,39 @@ export const KNOWN_UNSUPPORTED_SENDERS:Record<string,{name:string;kind:'bank'|'w
 export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassification{
  const sender=senderId(e.sender);
  const body=e.body||'';
+ const financial=/\b(?:debited|credited|paid|received|transferred|withdrawn|deposited|repaid)\b|transaction (?:number|reference)|current (?:E-Money Account )?balance|available balance|package.+(?:expire|expired)|have (?:used|finished)|ልከዋል|ተቀብለዋል|አስተላልፈዋል|ተላልፏል/.test(body.toLowerCase());
  if(/\bOTP\b|one[- ]time password|verification code|security code|PIN reset|Do not share (?:your )?(?:OTP|PIN|code)|is your telebirr code|confirmation code/i.test(body)){
   return {
    reason:'otp_security',
    reasonLabel:'Security Code / OTP',
    actionHint:'Temporary verification code containing no financial transaction. Safe to dismiss.',
    category:'security',
-   provider:sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
+   provider:['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844'].includes(sender)?'CBE Birr':sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
- if(/recharge and get|special (?:offer|package)|100% bonus|bonus airtime|cashback|congratulations|happy (?:new year|holiday|eid)|lottery|spin & win|lucky draw|telebirr superapp|buy 1 get 1|free (?:bonus|airtime|MB|GB|min)/i.test(body)&&!/transaction number is|has occurred on your account|(?:was|has been) (?:debited|credited) with|your payment of|transferred to other bank|has been credited to your account/i.test(body)){
+ if(/recharge and get|special (?:offer|package)|100% bonus|bonus airtime|cashback|congratulations|happy (?:new year|holiday|eid)|lottery|spin & win|lucky draw|telebirr superapp|buy 1 get 1|free (?:bonus|airtime|MB|GB|min)/i.test(body)&&!financial){
   return {
    reason:'promotional',
    reasonLabel:'Promotion / Marketing',
    actionHint:'Promotional announcement with no financial transaction. Safe to dismiss.',
    category:'promo',
-   provider:sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
+   provider:['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844'].includes(sender)?'CBE Birr':sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
- if(/successfully (?:changed|reset) your (?:PIN|password)|(?:PIN|password) has been updated successfully|logged in to|login alert|profile updated|KYC|account linked|daily limit|credit reminder|service suspended/i.test(body)){
+ if(/successfully (?:changed|reset) your (?:PIN|password)|(?:PIN|password) has been updated successfully|logged in to|login alert|profile updated|KYC|account linked|daily limit|credit reminder|service suspended/i.test(body)&&!financial){
   return {
    reason:'service_notice',
    reasonLabel:'Service / Account Notice',
    actionHint:'Account notice or settings change. No transaction occurred.',
    category:'service',
-   provider:sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
+   provider:['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844'].includes(sender)?'CBE Birr':sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
- const known=KNOWN_UNSUPPORTED_SENDERS[sender];
+ if(!financial&&/scheduled maintenance|system maintenance|service (?:interruption|unavailable)|branch (?:opening|closure)|public holiday|customer (?:notice|announcement)|link your fayda|update your (?:KYC|profile)|promotional|discount|special offer|ማስታወቂያ|የማረጋገጫ ኮድ|የይለፍ ቃል/i.test(body))return {reason:'service_notice',reasonLabel:'Non-financial notice',actionHint:'Ignored: no transaction to review.',category:'service',sender};
+ const known=supported.has(sender)?undefined:KNOWN_UNSUPPORTED_SENDERS[sender];
  if(known){
   return {
    reason:'unsupported_sender',
@@ -117,7 +120,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    reasonLabel:'Different Account Mask',
    actionHint:'Message belongs to a different unlinked account mask.',
    category:'action_required',
-   provider:sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
+   provider:['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844'].includes(sender)?'CBE Birr':sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
@@ -127,7 +130,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    reasonLabel:'Missing Message Date',
    actionHint:'Supply the Gregorian receipt date to parse this message.',
    category:'action_required',
-   provider:sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
+   provider:['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844'].includes(sender)?'CBE Birr':sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
@@ -137,7 +140,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
    reasonLabel:'Missing Reference / Slip',
    actionHint:'Financial alert missing a slip link or transaction number.',
    category:'action_required',
-   provider:sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
+   provider:['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844'].includes(sender)?'CBE Birr':sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
    sender
   };
  }
@@ -146,7 +149,7 @@ export function classifySmsReview(e:SmsEnvelope,issue?:string):SmsReviewClassifi
   reasonLabel:'Unrecognized Banking Format',
   actionHint:issue||'Format not recognized by parser. Review manually or enter as transaction.',
   category:'action_required',
-  provider:sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
+  provider:['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844'].includes(sender)?'CBE Birr':sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr',
   sender
  };
 }
@@ -227,16 +230,36 @@ function parseKnownSms(e:SmsEnvelope):ParsedSms{
  if(['127','994','251994','810','TELEBIRR'].includes(sender))normalized=normalized.replace(/\bYou have successfully (transferred|paid|received) ETB/gi,'You have $1 ETB').replace(/\b(?:Your|The) transaction (?:number|ID|reference)(?: is|:)?\s+/gi,'Your transaction number is ').replace(/Your current wallet balance/gi,'Your current balance');
  if(/\b(?:transaction|transfer|payment)\b[^.!?]{0,60}\b(?:failed|unsuccessful|declined|pending|reversed)\b|\b(?:failed|unsuccessful|declined|pending|reversed)\b[^.!?]{0,40}\b(?:transaction|transfer|payment)\b|\b(?:will|would|could) be (?:debited|credited)\b/i.test(normalized))throw Error('This transaction is not posted: failed, pending, or reversed notice. No spending or income was imported.');
  const body=['127','994','251994','810','TELEBIRR'].includes(sender)?amharicTelebirr(normalized)||normalized:normalized;
- let provider=sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr';
+ let provider=(['CBEBIR','CBEBIRR','CBE_BIRR','CBE-BIRR','844'].includes(sender)||sender==='CBE'&&/CBE\s*Birr/i.test(body))?'CBE Birr':sender.startsWith('ZEMEN')?'Zemen Bank':sender.startsWith('DASHEN')?'Dashen Bank':sender==='CBE'?'CBE':sender==='BOA'?'BOA':sender.startsWith('AWASH')?'Awash':'Telebirr';
  if(['CBE','BOA','Zemen Bank','Dashen Bank'].includes(provider))assertSingleBankAlert(body);
- if(['Awash','Zemen Bank','Dashen Bank'].includes(provider)){}
+ if(['CBE Birr','Awash','Zemen Bank','Dashen Bank'].includes(provider)){}
  else if(/Thank you for using telebirr/i.test(body))provider='Telebirr';
  else if(/(?:Thanks|Thank you) for Banking with CBE/i.test(body))provider='CBE';
  else if(/Bank of Abyssinia\b/i.test(body))provider='BOA';
  const bankDate=provider!=='Telebirr'?bankAlertDate(body):undefined;
  let when=bankDate?stamp(bankDate.date,bankDate.time):metadata(e),ref='',principal:number|undefined,person='',name='',category='Other',mask:string|undefined,balance:number|undefined;
  const feeParts={service:0,vat:0,disaster:0};
- if(provider==='Zemen Bank'||provider==='Dashen Bank'){
+ if(provider==='CBE Birr'){
+  if(!/CBE\s*Birr/i.test(body))throw Error('CBE Birr message signature is missing.');
+  const dates=[...body.matchAll(/\bon\s+(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/gi)];
+  if(dates.length!==1)throw Error('CBE Birr requires one transaction date.');
+  const d=dates[0],year=d[3].length===2?'20'+d[3]:d[3];
+  when=stamp(`${year}-${d[2].padStart(2,'0')}-${d[1].padStart(2,'0')}`,`${d[4].padStart(2,'0')}:${d[5]}${d[6]?':'+d[6]:''}`);
+  const transfer=body.match(new RegExp('you have successfully transferred\\s+'+amount+'\\s*Br[.]?\\s+to\\s+[0-9*]+-?(.+?)\\s+on\\s','i'));
+  const airtime=body.match(new RegExp('you bought\\s+'+amount+'\\s*Br[.]?\\s+of Airtime','i'));
+  const credit=body.match(new RegExp('your CBE\\s*Birr account has been credited with\\s+'+amount+'\\s*Br[.]?\\s+from\\s+(.+?)\\s+on\\s','i'));
+  if([transfer,airtime,credit].filter(Boolean).length!==1)throw Error('CBE Birr transaction format needs review.');
+  if(transfer){principal=-money(transfer[1]);person=transfer[2].trim();name='Transfer to '+person;}
+  else if(airtime){principal=-money(airtime[1]);name='Airtime purchase';category='Airtime & packages';}
+  else if(credit){principal=money(credit[1]);person=credit[2].trim();name='CBE Birr credit';category='Income';}
+  ref=body.match(/\bTxn ID\s+([A-Za-z0-9-]+)(?=[,.\s])/i)?.[1]||'';
+  const invoice=body.match(/[?&]TID=([A-Za-z0-9-]+)/i)?.[1];
+  if(invoice&&invoice!==ref)throw Error('CBE Birr reference conflicts with invoice.');
+  const balances=[...body.matchAll(/(?:your (?:CBE\s*Birr account )?balance is)\s*([\d,]+(?:\.\d{1,2})?)\s*Br\b/gi)];
+  if(balances.length!==1)throw Error('CBE Birr balance needs review.');
+  balance=money(balances[0][1]);
+  if(/\b(?:fee|charge|VAT|commission)\b/i.test(body))throw Error('CBE Birr fee format needs review.');
+ }else if(provider==='Zemen Bank'||provider==='Dashen Bank'){
   const zemen=provider==='Zemen Bank';
   if(!(zemen?/Thank you for banking with Zemen Bank/i:/Dashen Bank\s*-\s*Always one step ahead/i).test(body))throw Error(provider+' message signature is missing.');
   const alert=body.match(/your account\s+['"]?([\d*xX]+)['"]?\s+(?:has been|is)\s+(debited|credited)\s+with ETB\s*([\d,]+(?:\.\d{1,2})?)(?![\d,]|\.\d)/i);
@@ -383,7 +406,7 @@ function apply(s:State,p:ParsedSms):State{
 }
 export function previewSms(messages:SmsEnvelope[],state:State):SmsPreview[]{
  const parsed=messages.map((e,i)=>{try{return {message:i+1,parsed:parseSms(e)};}catch(error){return {message:i+1,issue:(error as Error).message,classification:classifySmsReview(e,(error as Error).message)};}}).sort((a,b)=>(a.parsed?.at||'').localeCompare(b.parsed?.at||''));
- let work=state;return parsed.map(item=>{if(!item.parsed)return {...item,status:'Needs review'};const p=item.parsed;try{validate(work,p);const next=apply(work,p),changed=p.records.some(r=>JSON.stringify(next.tx.find(t=>key(t)===key(r)))!==JSON.stringify(work.tx.find(t=>key(t)===key(r))))||JSON.stringify(next.packages)!==JSON.stringify(work.packages)||JSON.stringify(next.airtime)!==JSON.stringify(work.airtime),known=p.records.length?p.records.every(r=>work.tx.some(t=>key(t)===key(r))):(work.smsEvents||[]).includes(p.identity);const status=known?(changed?'Update':'Duplicate'):'Ready';work=next;return {...item,status};}catch(error){return {...item,status:'Needs review',issue:(error as Error).message,classification:classifySmsReview(messages[item.message-1],(error as Error).message)};}});
+ let work=state;return parsed.map(item=>{if(!item.parsed)return {...item,status:isNonFinancialReview(item.classification||{})?'Ignored':'Needs review'};const p=item.parsed;try{validate(work,p);const next=apply(work,p),changed=p.records.some(r=>JSON.stringify(next.tx.find(t=>key(t)===key(r)))!==JSON.stringify(work.tx.find(t=>key(t)===key(r))))||JSON.stringify(next.packages)!==JSON.stringify(work.packages)||JSON.stringify(next.airtime)!==JSON.stringify(work.airtime),known=p.records.length?p.records.every(r=>work.tx.some(t=>key(t)===key(r))):(work.smsEvents||[]).includes(p.identity);const status=known?(changed?'Update':'Duplicate'):'Ready';work=next;return {...item,status};}catch(error){return {...item,status:'Needs review',issue:(error as Error).message,classification:classifySmsReview(messages[item.message-1],(error as Error).message)};}});
 }
 export function previewSmsText(body:string,sender:string,date:string,time:string,state:State):SmsPreview[]{
  if(/^DEMO\s*\|/.test(body.trim()))return legacyPreview(body,'Paste SMS',state).map(p=>({message:p.row,status:p.status==='Ready'?'Ready':p.status==='Duplicate'?'Duplicate':'Needs review',issue:p.record?undefined:p.status,parsed:p.record?{provider:p.record.bank,identity:p.record.bank+'|'+p.record.ref,at:p.record.date,date:p.record.date,time:p.record.time,records:[p.record]}:undefined}));

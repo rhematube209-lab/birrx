@@ -19,7 +19,7 @@ import androidx.activity.result.ActivityResult;
 @CapacitorPlugin(name="DeviceLock")
 public class DeviceLockPlugin extends Plugin {
     private static DeviceLockPlugin instance;
-    private boolean enabled, locked, authenticating, resumeUnlocked;
+    private boolean enabled, locked, authenticating, resumeUnlocked, screenshotsAllowed;
     private long backgroundAt;
     private int delaySeconds;
     private View cover;
@@ -38,7 +38,7 @@ public class DeviceLockPlugin extends Plugin {
     }
     private int dp(int value){return Math.round(value*getContext().getResources().getDisplayMetrics().density);}
     private void render() {
-        if(enabled)getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        if(!screenshotsAllowed||locked)getActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         else getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
         if(enabled&&locked) {
             getBridge().getWebView().setVisibility(View.INVISIBLE);
@@ -66,6 +66,10 @@ public class DeviceLockPlugin extends Plugin {
         backgroundAt=0;resumeUnlocked=false;render();
     }
     @Override protected void handleOnDestroy() { if(cancellation!=null)cancellation.cancel();if(instance==this)instance=null; }
+    // Session-only allowance: never persisted and never bypasses the lock screen.
+    @PluginMethod public void setScreenshotAccess(PluginCall call) {
+        getActivity().runOnUiThread(()->{screenshotsAllowed=call.getBoolean("allowed",false);render();call.resolve();});
+    }
     @PluginMethod public void getStatus(PluginCall call) { call.resolve(status()); }
     @PluginMethod public void setEnabled(PluginCall call) { getActivity().runOnUiThread(()->authenticate(call,call.getBoolean("enabled",false)?"enable":"disable")); }
     @PluginMethod public void setAutoLockDelay(PluginCall call) {

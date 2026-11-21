@@ -1,3 +1,4 @@
+import {syncScreenshotAccess} from './services/screenshotAccess';
 import {passwordRecovery} from './services/passwordRecovery';
 import {setActiveAccount,activeAccount,workspaceName,accountStorageKey} from './accountScope';
 import {DeleteAccountPage} from './DeleteAccountPage';
@@ -414,6 +415,7 @@ function AppContent({connectionReady,userId}:{connectionReady:boolean;userId:str
 
 function AccountBoundary({connectionReady}:{connectionReady:boolean}){
  const [identity,setIdentity]=useState<string|null|undefined>();
+ useEffect(()=>{syncScreenshotAccess(identity);return()=>syncScreenshotAccess(null);},[identity]);
  useEffect(()=>{if(!authClient){setActiveAccount(null);setIdentity(null);return;}const {data}=authClient.auth.onAuthStateChange((_event,session)=>{if(passwordRecovery.active)return;const id=session?.user.id||null;setActiveAccount(id);setIdentity(id);});return()=>data.subscription.unsubscribe();},[]);
  if(identity===undefined)return <main className="startup-splash" aria-label="Opening BirrX"/>;
  return <AppContent key={identity||'signed-out'} connectionReady={connectionReady} userId={identity}/>;

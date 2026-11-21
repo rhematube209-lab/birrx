@@ -337,18 +337,9 @@ describe('Scan regressions', () => {
     expect(result.state.tx[0].person).toBe('Cafe ABC');
     expect(result.state.tx[0].ref).toBe('MCH9988');
 
-    // Exactly 4 items routed to review with correct classification
-    expect(result.state.unmatched).toHaveLength(4);
-
-    const otp = result.state.unmatched.find(u => u.category === 'security');
-    expect(otp).toBeDefined();
-    expect(otp?.reason).toBe('otp_security');
-    expect(otp?.reasonLabel).toBe('Security Code / OTP');
-
-    const promo = result.state.unmatched.find(u => u.category === 'promo');
-    expect(promo).toBeDefined();
-    expect(promo?.reason).toBe('promotional');
-    expect(promo?.reasonLabel).toBe('Promotion / Marketing');
+    // Non-financial notices never enter review.
+    expect(result.state.unmatched).toHaveLength(2);
+    expect(result.state.unmatched.some(u=>['security','promo','service'].includes(u.category||''))).toBe(false);
 
     const awash = result.state.unmatched.find(u => u.sender === 'AWASH');
     expect(awash).toBeDefined();

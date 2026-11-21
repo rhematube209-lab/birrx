@@ -1,0 +1,18 @@
+{
+  "appName": "BirrX",
+  "packageName": "com.birrx.app",
+  "versionName": "1.0",
+  "versionCode": 1,
+  "category": "Finance",
+  "type": "App",
+  "pricing": "Free",
+  "containsAds": false,
+  "publisher": "Tameru",
+  "supportEmail": "rhematube209@gmail.com",
+  "website": "https://birrx-sigma.vercel.app/",
+  "privacyPolicy": "https://birrx-sigma.vercel.app/privacy.html",
+  "accountDeletion": "https://birrx-sigma.vercel.app/delete-account.html",
+  "shortDescriptionCharacters": 69,
+  "fullDescriptionCharacters": 1720,
+  "submissionStatus": "Prepared locally; not uploaded or submitted"
+}

@@ -1,10 +1,11 @@
+import {cleanSmsReview} from '../smsReview';
 import { commitSms, previewSms, type SmsEnvelope, type SmsPreview } from '../sms';
 import { clearDemoData as clearSeededDemoData, eatDate, type State } from '../domain';
 import {smsFingerprint} from '../smsIdentity';
 import { scanNativeInbox, type RawSmsMessage } from './androidSmsBridge';
 
 export const SUPPORTED_SENDERS = new Set([
-  'CBE', 'BOA', '127', '994', '251994', '810', 'TELEBIRR',
+  'CBEBIR', 'CBE_BIRR', 'CBE-BIRR', 'CBE', 'BOA', '127', '994', '251994', '810', 'TELEBIRR',
   'AWASH', 'AWASHBANK', 'AWASH_BANK', 'DASHEN', 'DASHENBANK', 'DASHEN_BANK', 'COOP', 'COOPBANK',
   'HIBRET', 'NIB', 'WEGAGEN', 'ZEMEN', 'ZEMENBANK', 'ZEMEN_BANK', 'CBEBIRR', '844', 'AMHARA', 'SIINQEE'
 ]);
@@ -19,7 +20,7 @@ export const isSupportedSender = (sender: string): boolean => {
 
 export const OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours safe overlap window
 export const BATCH_SIZE = 50;
-export const SMS_PARSER_VERSION = '11';
+export const SMS_PARSER_VERSION = '13';
 
 export interface ScanProgress {
   stage: 'idle' | 'scanning' | 'processing' | 'done' | 'stopped' | 'error';
@@ -84,7 +85,8 @@ async function scanInbox(
   } = options;
 
   if (batchSize < 1 || maxMessages < 1) throw Error("Scan limits must be positive.");
-  let currentState = options.getState?.() || initialState;
+  let currentState = cleanSmsReview(options.getState?.() || initialState);
+  if(currentState!==initialState)options.onBatch?.(currentState);
   if (options.clearDemoData) {
     currentState = clearSeededDemoData(currentState);
     options.onBatch?.(currentState);
@@ -181,7 +183,7 @@ async function scanInbox(
       }));
 
       // 3. Process through existing parser & deduplicator
-      currentState = options.getState?.() || currentState;
+      currentState = cleanSmsReview(options.getState?.() || currentState);
       const previews: SmsPreview[] = previewSms(envelopes, currentState);
 
       for (const p of previews) {
@@ -241,7 +243,7 @@ async function scanInbox(
   }
 
   stoppedEarly = stoppedEarly || hasMore;
-  currentState = options.getState?.() || currentState;
+  currentState = cleanSmsReview(options.getState?.() || currentState);
   // Only advance the completed checkpoint after reaching the end of the inbox.
   // Interrupted scans retain the old checkpoint and safely deduplicate on retry.
   // Update scanner metadata in state prefs

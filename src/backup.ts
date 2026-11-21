@@ -1,3 +1,4 @@
+import {cleanSmsReview} from './smsReview';
 import {z} from 'zod';
 import {sha256} from '@noble/hashes/sha2.js';
 import {Capacitor} from '@capacitor/core';
@@ -34,7 +35,7 @@ function cleanState(value:unknown):State{
  const transfers=new Map<string,State['tx']>();for(const r of s.tx)if(r.transfer)transfers.set(r.transfer,[...(transfers.get(r.transfer)||[]),r]);
  for(const rows of transfers.values())if(rows.length!==2||rows[0].amt+rows[1].amt!==0||accountKey(rows[0])===accountKey(rows[1]))throw Error('Backup contains an incomplete own-account transfer.');
  s.prefs=Object.fromEntries(Object.entries(s.prefs).filter(([k])=>preferenceKeys.has(k)));
- return s;
+ return cleanSmsReview(s);
 }
 async function digest(value:unknown){const bytes=new TextEncoder().encode(JSON.stringify(value));return Array.from(sha256(bytes),n=>n.toString(16).padStart(2,'0')).join('');}
 export async function createBackup(state:State){const data=cleanState(state);const result=JSON.stringify({app:'birrx',format:1,createdAt:new Date().toISOString(),checksum:await digest(data),data},null,2);if(new Blob([result]).size>MAX_BACKUP_BYTES)throw Error('Backup exceeds the 10 MB limit.');return result;}
@@ -51,7 +52,7 @@ export function prepareRestore(snapshot:State,current:State):State{
  // Permissions, notification delivery and scanner checkpoints belong to this installation.
  for(const k of ['notify_transactions','notify_plans','notify_goals','notify_recurring','notificationEvents','lock','workspaceOwner','notify_dailyInsights','notify_weeklyInsights']){delete s.prefs[k];if(current.prefs[k]!==undefined)s.prefs[k]=current.prefs[k];}
  s.prefs.fullSmsRescanPending='1';s.prefs.demoDataCleared='1';
- return s;
+ return cleanSmsReview(s);
 }
 export async function downloadBackup(contents:string){
  if(Capacitor.isNativePlatform()){

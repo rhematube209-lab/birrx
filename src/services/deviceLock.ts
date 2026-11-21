@@ -1,6 +1,7 @@
 import {registerPlugin} from '@capacitor/core';
 export type LockStatus={enabled:boolean;locked:boolean;available:boolean;delaySeconds?:number};
 export const deviceLock=registerPlugin<{
+ setScreenshotAccess(options:{allowed:boolean}):Promise<void>;
  getStatus():Promise<LockStatus>;
  setEnabled(options:{enabled:boolean}):Promise<LockStatus>;
  setAutoLockDelay(options:{seconds:number}):Promise<LockStatus>;

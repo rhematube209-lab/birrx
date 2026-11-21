@@ -1,0 +1,11 @@
+import {beforeEach,it,expect,vi} from 'vitest';
+const api=vi.hoisted(()=>({getUser:vi.fn(),setScreenshotAccess:vi.fn(),isAndroidNative:vi.fn(()=>true)}));
+vi.mock('./auth',()=>({authClient:{auth:{getUser:api.getUser}}}));
+vi.mock('./deviceLock',()=>({deviceLock:{setScreenshotAccess:api.setScreenshotAccess}}));
+vi.mock('./androidSmsBridge',()=>({isAndroidNative:api.isAndroidNative}));
+import {syncScreenshotAccess} from './screenshotAccess';
+const flush=async()=>{for(let i=0;i<15;i++)await Promise.resolve();};
+beforeEach(async()=>{syncScreenshotAccess(null);await flush();vi.clearAllMocks();api.setScreenshotAccess.mockResolvedValue(undefined);});
+it('allows only the server-verified owner identity',async()=>{api.getUser.mockResolvedValue({data:{user:{id:'owner',email:'tamerumengesha209@gmail.com'}},error:null});syncScreenshotAccess('owner');await flush();expect(api.setScreenshotAccess.mock.calls.map(c=>c[0].allowed)).toEqual([false,true]);});
+it('blocks other accounts and failed verification',async()=>{api.getUser.mockResolvedValue({data:{user:{id:'other',email:'other@example.test'}},error:null});syncScreenshotAccess('other');await flush();expect(api.setScreenshotAccess).toHaveBeenLastCalledWith({allowed:false});api.getUser.mockRejectedValue(Error('Offline'));syncScreenshotAccess('owner');await flush();expect(api.setScreenshotAccess.mock.calls.some(c=>c[0].allowed)).toBe(false);});
+it('does not apply a stale owner result after sign-out',async()=>{let finish!:(data:unknown)=>void;api.getUser.mockReturnValue(new Promise(resolve=>{finish=resolve;}));syncScreenshotAccess('owner');await flush();syncScreenshotAccess(null);finish({data:{user:{id:'owner',email:'tamerumengesha209@gmail.com'}},error:null});await flush();expect(api.setScreenshotAccess).toHaveBeenLastCalledWith({allowed:false});expect(api.setScreenshotAccess.mock.calls.some(c=>c[0].allowed)).toBe(false);});

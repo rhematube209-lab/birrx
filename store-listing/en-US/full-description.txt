@@ -1,0 +1,28 @@
+Make everyday money easier to understand with BirrX.
+
+Bring supported Ethiopian bank and mobile-wallet activity together. Track income, spending and reported balances, then see where your money goes.
+
+YOUR MONEY, CLEARLY
+• Review transactions and cash-flow reports.
+• Choose categories, add your own and keep favorites handy.
+• Track separate accounts and wallets.
+• See spending by category and account fees.
+
+BUILD BETTER HABITS
+• Set budgets and follow your savings goals.
+• Keep track of recurring payments.
+• Receive transaction alerts and daily or weekly insight reminders.
+
+OPTIONAL SMS IMPORT
+On Android, grant SMS permission to import supported financial messages, including supported formats from CBE, CBE Birr, Bank of Abyssinia, Telebirr, Awash Bank, Zemen Bank and Dashen Bank. Available formats vary. You can also enter transactions manually or import CSV and pasted messages.
+
+Unrecognized formats go to your review inbox. Optional AI analysis needs your separate confirmation before selected, masked financial message content is sent to Supabase and Google Gemini. Review AI suggestions before saving them.
+
+MADE FOR YOU
+Choose English or Amharic, light or dark appearance and adjustable text size. Use supported Android device authentication to lock access, and export backups when needed.
+
+Financial records are stored on your device and are not automatically synchronized between devices. Registration and internet access when opening the app are required. SMS permission is optional.
+
+BirrX is a personal finance tracker, not a bank, lender or payment service. Reported balances come from available records and are not a live bank connection.
+
+Questions? Contact rhematube209@gmail.com.
