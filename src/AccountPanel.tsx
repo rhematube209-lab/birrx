@@ -1,9 +1,11 @@
+import {passwordRecovery} from './services/passwordRecovery';
+import {AccountDeletion} from './AccountDeletion';
 import {useEffect,useState,type FormEvent} from 'react';
 import type {Session} from '@supabase/supabase-js';
 import {authClient,authErrorMessage,connectionMessage} from './services/auth';
 
 type Mode='signin'|'signup'|'verify'|'forgot'|'recover'|'password';
-export function AccountPanel(){
+export function AccountPanel({onDeleted}:{onDeleted?:(userId:string)=>Promise<void>}={}){
  const [deletionOpen,setDeletionOpen]=useState(false);
  const [online,setOnline]=useState(()=>navigator.onLine);
  useEffect(()=>{const refresh=()=>setOnline(navigator.onLine);window.addEventListener('online',refresh);window.addEventListener('offline',refresh);return()=>{window.removeEventListener('online',refresh);window.removeEventListener('offline',refresh);};},[]);
@@ -37,14 +39,16 @@ export function AccountPanel(){
     const {data,error}=await authClient.auth.signUp({email:address,password,options:{data:{display_name:String(form.get('name')||'').trim().slice(0,60)}}});if(error)throw error;
     if(!data.session){setMode('verify');setResendAt(Date.now()+60000);setClock(Date.now());setMessage('Check your email for a verification code. If you already have an account, sign in instead.');}
    }else if(mode==='verify'||mode==='recover'){
-    const {error}=await authClient.auth.verifyOtp({email:address,token:String(form.get('code')||'').trim(),type:mode==='recover'?'recovery':'signup'});if(error)throw error;
+    if(mode==='recover')passwordRecovery.active=true;
+    try{const {error}=await authClient.auth.verifyOtp({email:address,token:String(form.get('code')||'').trim(),type:mode==='recover'?'recovery':'signup'});if(error)throw error;}catch(error){passwordRecovery.active=false;throw error;}
     if(mode==='recover'){setMode('password');setMessage('Email verified. Choose a new password.');}
    }else if(mode==='forgot'){
     const {error}=await authClient.auth.resetPasswordForEmail(address);if(error)throw error;
     setMode('recover');setResendAt(Date.now()+60000);setClock(Date.now());setMessage('If an account exists for this email, a recovery code has been sent.');
    }else{
     const {error}=await authClient.auth.updateUser({password});if(error)throw error;
-    setMode('signin');setMessage('Your password has been updated.');
+    if(passwordRecovery.active){const {error:signOutError}=await authClient.auth.signOut({scope:'local'});if(signOutError)throw signOutError;passwordRecovery.active=false;setSession(null);}
+    setMode('signin');setMessage('Your password has been updated. Sign in with your new password.');
    }
   });
  };
@@ -57,7 +61,7 @@ export function AccountPanel(){
  if(!authClient)return <section className="card accountpanel"><h2>BirrX account</h2><p>Registration and sign-in are being set up.</p><small>You can continue using your records on this device.</small></section>;
  if(loading)return <section className="card accountpanel" aria-busy="true"><h2>BirrX account</h2><p>Loading your account…</p></section>;
  const notice=<><p className="out" role="alert">{error||(!online?connectionMessage:'')}</p><p role="status">{message}</p></>;
- if(session&&mode!=='password')return <section className="card accountpanel"><h2>BirrX account</h2><p className="accountemail">{session.user.email}</p><span className="chip">Signed in</span><div className="profileid"><small>Account ID</small><code>{session.user.id}</code></div><p>Financial records stay on this device. Cloud backup is not connected yet.</p>{notice}<div className="actions"><button disabled={busy} onClick={()=>changeMode('password')}>Change password</button><button disabled={busy} onClick={()=>void run(async()=>{if(!authClient)return;const {error}=await authClient.auth.signOut({scope:'local'});if(error)throw error;setMode('signin');setMessage('Signed out. Your device records are still available.');})}>Sign out</button></div><button className="link out" onClick={()=>setDeletionOpen(!deletionOpen)}>Request account deletion</button>{deletionOpen&&<section className="card"><h3>Delete your BirrX account</h3><p>This prepares an email request to Tameru, BirrX support. Send it from your registered email. Support verifies ownership before removing your account and associated usage counters.</p><p>Your device records, original SMS and exported backups are separate. After saving any backup you want, clear BirrX app storage on each device to remove local records. Never include passwords, verification codes or banking messages in your request.</p><a href={'mailto:rhematube209@gmail.com?subject='+encodeURIComponent('BirrX account deletion request')+'&body='+encodeURIComponent('Please delete my BirrX account and associated account data.\nRegistered email: '+(session.user.email||'')+'\nPlease confirm the identity-verification steps.')}>Prepare deletion request email</a><p><small>You must send the email. Preparing a draft does not delete your account.</small></p><button onClick={()=>setDeletionOpen(false)}>Cancel</button></section>}</section>;
+ if(session&&mode!=='password'&&mode!=='recover')return <section className="card accountpanel"><h2>BirrX account</h2><p className="accountemail">{session.user.email}</p><span className="chip">Signed in</span><div className="profileid"><small>Account ID</small><code>{session.user.id}</code></div><p>Financial records stay on this device. Cloud backup is not connected yet.</p>{notice}<div className="actions"><button disabled={busy} onClick={()=>changeMode('password')}>Change password</button><button disabled={busy} onClick={()=>void run(async()=>{if(!authClient)return;const {error}=await authClient.auth.signOut({scope:'local'});if(error)throw error;setMode('signin');setMessage('Signed out. Your device records are still available.');})}>Sign out</button></div><button className="link out" onClick={()=>setDeletionOpen(!deletionOpen)}>Delete account</button>{deletionOpen&&<AccountDeletion email={session.user.email||''} cleanup={onDeleted} cancel={()=>setDeletionOpen(false)}/>}</section>;
  const title={signin:'Sign in to BirrX',signup:'Create your BirrX account',verify:'Verify your email',forgot:'Reset your password',recover:'Enter your recovery code',password:'Choose a new password'}[mode];
  const codeMode=mode==='verify'||mode==='recover',passwordMode=mode==='signin'||mode==='signup'||mode==='password';
  return <section className="card accountpanel"><h2>{title}</h2><p>{codeMode?`Enter the code sent to ${email}.`:'Connect to the internet to use your BirrX account. Your financial records stay on this device.'}</p><form key={mode} onSubmit={submit} aria-busy={busy}>
@@ -72,6 +76,6 @@ export function AccountPanel(){
  </form><div className="accountlinks">
  {mode==='signin'&&<><button className="link" disabled={busy} onClick={()=>changeMode('signup')}>Create account</button><button className="link" disabled={busy} onClick={()=>changeMode('forgot')}>Forgot password?</button></>}
  {codeMode&&<><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value.trim().toLowerCase())} autoComplete="email" disabled={busy}/></label><button className="link" disabled={busy||!email||resendAt>clock} onClick={resend}>{resendAt>clock?`Resend code in ${Math.ceil((resendAt-clock)/1000)}s`:'Resend code'}</button></>}
- {mode!=='signin'&&<button className="link" disabled={busy} onClick={()=>changeMode('signin')}>{session?'Back to account':'Back to sign in'}</button>}
- </div><small>Signing in connects your account. Device records are shared by people using this app installation; sign-in does not upload or move them.</small></section>;
+ {mode!=='signin'&&<button className="link" disabled={busy} onClick={()=>void run(async()=>{if(passwordRecovery.active&&authClient){const {error}=await authClient.auth.signOut({scope:'local'});if(error)throw error;passwordRecovery.active=false;setSession(null);}changeMode('signin');})}>{session?'Back to account':'Back to sign in'}</button>}
+ </div><small>Signing in connects your account. Each account has its own records on this device. Signing in does not upload or move them.</small></section>;
 }

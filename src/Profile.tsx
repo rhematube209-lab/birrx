@@ -6,7 +6,7 @@ import {AccountPanel} from './AccountPanel';
 import {BackupPanel} from './BackupPanel';
 import {t} from './i18n';
 
-export function Profile({s,update,go,open,restore}:{s:State;update:(fn:(s:State)=>State)=>void;go:(page:string)=>void;open:(sheet:Sheet)=>void;restore:(next:State)=>Promise<void>}){
+export function Profile({s,update,go,open,restore,onDeleted}:{s:State;update:(fn:(s:State)=>State)=>void;go:(page:string)=>void;open:(sheet:Sheet)=>void;restore:(next:State)=>Promise<void>;onDeleted?:(userId:string)=>Promise<void>}){
  const [editing,setEditing]=useState(false);
  const lang=s.prefs.language||'English';
  const isAm=lang==='Amharic';
@@ -29,5 +29,5 @@ export function Profile({s,update,go,open,restore}:{s:State;update:(fn:(s:State)
  <div className="profileid"><small>{isAm?'የመገለጫ መታወቂያ':'Profile ID'}</small><code>{s.prefs.profileId||(isAm?'መገለጫ በመፍጠር ላይ…':'Creating profile…')}</code><small>{isAm?'ይህ የአካባቢዎን መገለጫ ይለያል፤ የባንክ ሂሳብ ቁጥር አይደለም።':'This identifies your local profile; it is not a bank account number.'}</small></div></section>
  <section className="card profile-shortcuts" aria-label={t(lang,'QuickTools')}>{shortcuts.map(({key,label,icon:Icon,action})=><button type="button" key={key} onClick={action} aria-label={key==='Inbox'&&pending?`${label}, ${pending} ${t(lang,'InReview')}`:label}><span className="profilelinkicon"><Icon size={22}/>{key==='Inbox'&&pending>0&&<span className="review-dot" aria-hidden="true"/>}</span><span>{label}</span></button>)}</section>
  <section className="card profilelinks" aria-label={t(lang,'ProfileTools')}>{links.map(({key,label,description,icon:Icon,action})=><button className="profilelink" key={key} onClick={action}><span className="profilelinkicon"><Icon size={21}/></span><span className="description"><b>{label}</b><small>{description}</small></span><ChevronRight size={17}/></button>)}</section>
- <BackupPanel state={s} restore={restore}/><AccountPanel/></>;
+ <BackupPanel state={s} restore={restore}/><AccountPanel onDeleted={onDeleted}/></>;
 }

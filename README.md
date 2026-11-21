@@ -211,3 +211,26 @@ Android startup checks notification permission after sign-in and requests it onc
 Android alerts are swipe-dismissible and request automatic cancellation 30 seconds after delivery (Android 8+). The in-app notification inbox is retained. Android/OEM accessibility and notification settings control heads-up visibility; BirrX cannot force a pop-up to remain visible for 30 seconds. A repeatable local Capacitor patch is applied by `npm install` and `npm run build`; keep `scripts/patch-notification-timeout.mjs` when updating native dependencies. Cash-flow axes use actual weekly/monthly income and spending, equally spaced adaptive ticks and headroom, with no fixed 50,000 ETB floor.
 
 Daily insights and Sunday weekly insights are enabled by default when Android notification permission is allowed. Both target 21:00 East Africa Time and can be disabled independently in Settings → Notifications. Native alarms re-arm after delivery and restore after reboot or clock/timezone changes; Sunday combines both summaries into one wake-up. Android battery restrictions can defer inexact alarms, and force-stopping the app prevents delivery until it is opened again. Alerts contain no precomputed financial totals: tapping opens Budgets → Reports with the original day or Monday–Sunday range and the latest local totals, categories, fees and activity. Home and Transactions periods are preserved. Notifications remain swipe-dismissible with the existing 30-second timeout.
+
+Account isolation: authenticated workspaces now use a separate IndexedDB database per Supabase user ID. Sign-in changes remount the app and queued writes retain their original database name. Onboarding, notification inbox and read/dismissed markers are account-scoped. Deletion requires the server-confirmed user ID and clears only that account's database and restore point. Backup restore keeps the current workspace owner and cannot switch ownership using backup contents. The former shared `birrx` database is left unassigned rather than automatically attached to whichever account signs in next. Records already erased by an older shared-workspace deletion are not recoverable from sign-in; restore a backup or reimport original SMS where available.
+
+### Branded password-recovery email (Supabase + Resend)
+
+In the BirrX Supabase project, open Authentication → Email → Templates → Reset password (some dashboard versions show Email Templates directly). Set the subject to `Reset your BirrX password` and replace the entire body with `supabase/templates/recovery.html`. Save. The template uses `{{ .Token }}`, not a reset link; the app verifies it with the `recovery` OTP type. Leave Confirm email disabled as previously configured. Template changes apply in Supabase, not through a Vercel deployment or Capacitor sync.
+
+For production delivery, verify a domain you own in Resend by adding its required DNS records. A default vercel.app URL or Gmail address cannot serve as your verified sending domain. Create a Resend sending API key, scoped to that domain where available, and enter it privately in Supabase Authentication → Email → SMTP Settings:
+
+- Sender name: BirrX
+- Sender address: a mailbox on your verified domain (choose your actual address)
+- Host: smtp.resend.com
+- Port: 465
+- Username: resend
+- Password: your Resend API key
+
+Enable custom SMTP and save. Never put the SMTP password in frontend code, VITE_ variables, or the APK. The GEMINI_API_KEY secret is unrelated. See https://resend.com/docs/send-with-supabase-smtp and https://supabase.com/docs/guides/auth/auth-email-templates.
+
+Test using an existing disposable BirrX account: Forgot password → receive the branded code → verify the latest code → set a new password → sign in using it. Also check an incorrect code, resend cooldown, and spam folder. SMTP delivery and live recovery still require this dashboard configuration and a real inbox test. The local recovery UI test mocks Auth; it does not prove delivery. The recovery session stays outside the financial workspace until the password is saved and the user signs in normally.
+
+Account records, onboarding, and notification inbox preferences are scoped to the authenticated user ID. Legacy shared records are preserved in the old database without assigning an owner. Export a backup before updating an older shared-workspace build; restore it while signed into its original account.
+
+Resend setup is postponed. Supabase default email is for testing only: delivery is restricted to project-team addresses and currently limited to two emails per hour. General user recovery requires custom SMTP. See https://supabase.com/docs/guides/auth/auth-smtp.

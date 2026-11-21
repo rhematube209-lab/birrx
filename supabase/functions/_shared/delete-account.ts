@@ -18,10 +18,14 @@ export function accountDeletionHandler(config:Config,fetcher:typeof fetch=fetch)
    if(!verified.ok)return reply(401,{error:'Sign in again before deleting your account.'});
    const user=await verified.json();
    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id||''))return reply(401,{error:'Invalid account.'});
+   const age=Date.now()-Date.parse(user.last_sign_in_at||'');
+   if(!Number.isFinite(age)||age < -60000||age>300000)return reply(401,{error:'Verify your password again before deleting your account.'});
    // The caller cannot supply another user's identity. Remove associated counters first;
    // failures stop deletion so the request can be retried without claiming completion.
    const counters=await fetcher(config.url+'/rest/v1/rpc/birrx_delete_my_usage',{method:'POST',headers:admin,body:JSON.stringify({p_user_id:user.id}),signal:AbortSignal.timeout(15000)});
    if(!counters.ok)return reply(503,{error:'Account cleanup is unavailable. Nothing was marked complete. Please retry later.'});
+   const revoked=await fetcher(config.url+'/auth/v1/logout?scope=global',{method:'POST',headers:{apikey:config.serviceKey,Authorization:token},signal:AbortSignal.timeout(15000)});
+   if(!revoked.ok)return reply(503,{error:'Could not revoke account sessions. Sign in again and retry deletion.'});
    const deleted=await fetcher(config.url+'/auth/v1/admin/users/'+user.id,{method:'DELETE',headers:admin,signal:AbortSignal.timeout(15000)});
    if(!deleted.ok)return reply(503,{error:'Account deletion did not complete. Please retry later.'});
    return reply(200,{deleted:true});

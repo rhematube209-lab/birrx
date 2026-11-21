@@ -87,6 +87,15 @@ public class SmsScannerPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void clearAccountData(PluginCall call) {
+        getContext().getSharedPreferences("birrx-notifications", 0).edit().clear().apply();
+        InsightReceiver.prefs(getContext()).edit().clear().apply();
+        InsightReceiver.scheduleAll(getContext());
+        ((android.app.NotificationManager)getContext().getSystemService(android.content.Context.NOTIFICATION_SERVICE)).cancelAll();
+        call.resolve();
+    }
+
+    @PluginMethod
     public void getInsightHistory(PluginCall call) {
         try { JSObject result = new JSObject(); result.put("items", new JSArray(InsightReceiver.prefs(getContext()).getString("history", "[]"))); call.resolve(result); }
         catch (Exception e) { call.reject("Unable to read insight notifications", e); }

@@ -49,7 +49,7 @@ export async function readBackup(contents:string){
 export function prepareRestore(snapshot:State,current:State):State{
  const s=cleanState(snapshot);
  // Permissions, notification delivery and scanner checkpoints belong to this installation.
- for(const k of ['notify_transactions','notify_plans','notify_goals','notify_recurring','notificationEvents','lock']){delete s.prefs[k];if(current.prefs[k]!==undefined)s.prefs[k]=current.prefs[k];}
+ for(const k of ['notify_transactions','notify_plans','notify_goals','notify_recurring','notificationEvents','lock','workspaceOwner','notify_dailyInsights','notify_weeklyInsights']){delete s.prefs[k];if(current.prefs[k]!==undefined)s.prefs[k]=current.prefs[k];}
  s.prefs.fullSmsRescanPending='1';s.prefs.demoDataCleared='1';
  return s;
 }

@@ -97,3 +97,15 @@ Privacy policy: https://birrx-sigma.vercel.app/privacy.html
 Account deletion: https://birrx-sigma.vercel.app/delete-account.html
 
 These are the intended Play Console URLs. The pages are prepared in this checkout but must be deployed and checked anonymously before submission. Do not treat the URLs as verified live merely because the website domain exists.
+
+## Automated deletion implementation update
+
+The local app now includes Profile → BirrX account → Delete account with current-password verification, DELETE confirmation and an acknowledgement. The standalone web route `/#DeleteAccount` bypasses SMS onboarding and notification-permission setup; users can sign in and delete without installing the app. Both use the same authenticated `delete-account` endpoint. Email remains an alternative.
+
+Deployment sequence (not yet executed on BirrX):
+1. In project `yaocdliuirgydtpjikqw`, run `releases/ai-deployment/account-deletion.sql` in SQL Editor. It only grants the cleanup RPC to service_role.
+2. Deploy a function named `delete-account` using the complete single-file `releases/ai-deployment/delete-account.ts`. Its handler verifies every bearer token with Auth; the repository's function config disables legacy gateway JWT verification. If using Dashboard editor, match that setting rather than leaving incompatible legacy verification on.
+3. Test an unauthenticated POST: it must return 401 and change nothing. Use a disposable account for the authenticated test: recent password sign-in, explicit confirmation, quota cleanup, global session revocation, hard Auth deletion, then current-device cleanup. Failed server confirmation must preserve local records.
+4. Deploy the web/app changes and verify the public deletion route anonymously and after sign-in. Do not declare automated deletion live until this test passes.
+
+Current-device cleanup refuses to run during an active SMS scan and waits for queued writes. It removes the deleted user's IndexedDB workspace and pre-restore snapshot, clears that user's browser preferences/history, and cancels notifications and native metadata when that user is active. Other open browser tabs receive a user-specific deletion marker and clear only the matching workspace. Other devices and exported backups cannot be remotely erased. Existing access tokens may remain technically valid until expiry, so BirrX's privileged handlers must continue checking Auth on every request.
