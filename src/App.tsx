@@ -1,3 +1,4 @@
+import {autoReconcileTransfers} from './transferMatching';
 import {syncScreenshotAccess} from './services/screenshotAccess';
 import {passwordRecovery} from './services/passwordRecovery';
 import {setActiveAccount,activeAccount,workspaceName,accountStorageKey} from './accountScope';
@@ -55,7 +56,7 @@ function AppContent({connectionReady,userId}:{connectionReady:boolean;userId:str
   const [state,setState]=useState<State|null>(null),[error,setError]=useState('');
   const [tab,setTab]=useState(currentTab()),[sheet,setSheet]=useState<Sheet|null>(null);
   const [insightReport,setInsightReport]=useState<InsightTarget|null>(null);
-  const [plan,setPlan]=useState('Budgets'),[notice,setNotice]=useState(''),[formError,setFormError]=useState(''),[reviewFilter,setReviewFilter]=useState('All');
+  const [plan,setPlan]=useState('Budgets'),[notice,setNotice]=useState(''),[formError,setFormError]=useState(''),[reviewFilter,setReviewFilter]=useState('All'),[reviewHistoryLimit,setReviewHistoryLimit]=useState(20);
   const [query,setQuery]=useState(''),[account,setAccount]=useState('All'),[direction,setDirection]=useState('All');
   const [categoryFilter,setCategoryFilter]=useState('All'),[minAmount,setMinAmount]=useState(''),[maxAmount,setMaxAmount]=useState('');
   const [personQuery,setPersonQuery]=useState(''),[personAccount,setPersonAccount]=useState('All'),[personDir,setPersonDir]=useState('All tran');
@@ -165,7 +166,7 @@ function AppContent({connectionReady,userId}:{connectionReady:boolean;userId:str
     void listenNotificationActions(target=>notificationRoute.current(target)).then(h=>{if(disposed)void h.remove();else remove=()=>h.remove();});
     return()=>{disposed=true;void remove?.();};
   },[storageReady]);
-  const update:Update=fn=>{const current=active.current;if(!current||restoring.current||activeAccount()!==userId)return;const next=fn(current);active.current=next;setState(next);saveQueue.current=saveQueue.current.then(()=>persist(next,storageName)).catch(e=>setError('Changes could not be saved: '+e.message));};
+  const update:Update=fn=>{const current=active.current;if(!current||restoring.current||activeAccount()!==userId)return;const next=autoReconcileTransfers(fn(current));active.current=next;setState(next);saveQueue.current=saveQueue.current.then(()=>persist(next,storageName)).catch(e=>setError('Changes could not be saved: '+e.message));};
   async function restoreBackup(snapshot:State){
     if(restoring.current)throw Error('A restore is already running.');
     restoring.current=true;
@@ -284,7 +285,7 @@ function AppContent({connectionReady,userId}:{connectionReady:boolean;userId:str
           </div>
         </section>;
       }):<section className="card"><p>No unique transfer pairs to review.</p></section>}
-      {reviewedPairs.length>0&&<details className="card reviewed-transfers"><summary>Reviewed transfers · {reviewedPairs.length}</summary>{reviewedPairs.map(pair=><div className="row" key={pair.key}><span><b>{pair.legs[0].bank} → {pair.legs[1].bank}</b><small>{date(pair.legs[0].date)} · {pair.decision==='confirmed'?'Confirmed own transfer':'Kept separate'}</small></span><button onClick={()=>update(s=>reconcilePair(s,pair.key,'pending'))}>Undo</button></div>)}</details>}
+      {reviewedPairs.length>0&&<details className="card reviewed-transfers"><summary>Reviewed transfers · {reviewedPairs.length}</summary>{reviewedPairs.slice(0,reviewHistoryLimit).map(pair=><div className="row" key={pair.key}><span><b>{pair.legs[0].bank} → {pair.legs[1].bank}</b><small>{date(pair.legs[0].date)} · {pair.decision==='confirmed'?(pair.legs[0].transfer?.startsWith('auto-own-')?'Automatically matched own transfer':'Confirmed own transfer'):'Kept separate'}</small></span><button onClick={()=>update(s=>reconcilePair(s,pair.key,'pending'))}>Undo</button></div>)}{reviewedPairs.length>reviewHistoryLimit&&<button className="link" onClick={()=>setReviewHistoryLimit(n=>n+20)}>Show more transfers</button>}</details>}
       <section className="card">
         <h2>Flagged records</h2>
         {activity(s.tx.filter(r=>r.flag))}

@@ -103,7 +103,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onboardi
     <div className="android-sms-sync">
       <div className="line sms-sync-heading">
         <h2>{isAm ? 'መልዕክቶችዎን ያገናኙ' : 'Connect your messages'}</h2>
-        <small>CBE · CBE Birr · BOA · Awash · Zemen · Dashen · Telebirr</small>
+        <small>CBE · CBE Birr · BOA · Apollo · Awash · Zemen · Dashen · Telebirr</small>
       </div>
 
       {permissionStatus === 'unsupported' ? (
@@ -119,7 +119,7 @@ export function AndroidSmsSyncModal({ state, getState, update, onClose, onboardi
             <ShieldCheck size={28} className="shield-icon" />
             <div>
               <b>{isAm ? 'መልዕክቶችዎ በስልክዎ ላይ ብቻ ይቀራሉ' : 'Your messages stay on your phone'}</b>
-              <small>{isAm ? 'የCBE፣ BOA፣ አዋሽ፣ ዘመን፣ ዳሽን እና ቴሌብር ግብይቶችን በራስ-ሰር ያስመጡ።' : 'Import transactions from CBE, CBE Birr, BOA, Awash, Zemen, Dashen and Telebirr automatically.'}</small>
+              <small>{isAm ? 'የCBE፣ BOA፣ አዋሽ፣ ዘመን፣ ዳሽን እና ቴሌብር ግብይቶችን በራስ-ሰር ያስመጡ።' : 'Import transactions from CBE, CBE Birr, BOA, Apollo, Awash, Zemen, Dashen and Telebirr automatically.'}</small>
             </div>
           </div>
 

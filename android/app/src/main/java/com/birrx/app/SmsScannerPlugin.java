@@ -29,11 +29,12 @@ import java.util.Set;
 public class SmsScannerPlugin extends Plugin {
 
     private static final Set<String> SUPPORTED_SENDERS = new HashSet<>(Arrays.asList(
-        "CBEBIR", "CBE_BIRR", "CBE-BIRR", "CBE", "BOA", "127", "994", "251994", "810", "TELEBIRR",
+        "APOLLO", "APOLLOBOA", "APOLLODIGITAL", "APOLLO_DIGITAL", "CBEBIR", "CBE_BIRR", "CBE-BIRR", "CBE", "BOA", "127", "994", "251994", "810", "TELEBIRR",
         "AWASH", "AWASHBANK", "AWASH_BANK", "DASHEN", "DASHENBANK", "DASHEN_BANK", "COOP", "COOPBANK",
         "HIBRET", "NIB", "WEGAGEN", "ZEMEN", "ZEMENBANK", "ZEMEN_BANK", "CBEBIRR", "844", "AMHARA", "SIINQEE"
     ));
 
+    static {SUPPORTED_SENDERS.addAll(BankSenderRegistry.BANKS.keySet());}
     private static SmsScannerPlugin instance;
 
     @PluginMethod

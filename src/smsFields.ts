@@ -1,9 +1,10 @@
+import {registeredBank,bankProfiles} from './bankRegistry';
 import {moneyEvidence,postedDirection} from '../supabase/functions/_shared/sms-ai';
 export {moneyEvidence,postedDirection};
 
-export const transferBankNames='Commercial Bank of Ethiopia|Bank of Abyssinia|Awash Bank|Zemen Bank|Dashen Bank';
+export const transferBankNames=['Commercial Bank of Ethiopia','Bank of Abyssinia','Awash Bank','Zemen Bank','Dashen Bank',...Object.keys(bankProfiles)].join('|');
 export function transferBankLabel(name:string){
- return /commercial bank of ethiopia/i.test(name)?'CBE':/bank of abyssinia/i.test(name)?'BOA':/awash/i.test(name)?'Awash':/zemen/i.test(name)?'Zemen Bank':'Dashen Bank';
+ return registeredBank(name)||(/commercial bank of ethiopia/i.test(name)?'CBE':/bank of abyssinia/i.test(name)?'BOA':/awash/i.test(name)?'Awash':/zemen/i.test(name)?'Zemen Bank':'Dashen Bank');
 }
 
 export function assertSingleBankAlert(body:string){

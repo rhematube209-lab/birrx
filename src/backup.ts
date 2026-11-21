@@ -1,3 +1,4 @@
+import {autoReconcileTransfers} from './transferMatching';
 import {cleanSmsReview} from './smsReview';
 import {z} from 'zod';
 import {sha256} from '@noble/hashes/sha2.js';
@@ -15,7 +16,7 @@ const amounts=z.record(z.string(),positive);
 const stateSchema=z.object({
  version:z.literal(1),
  categoryDefinitions:z.array(z.object({id,name:text,direction:z.enum(['out','in','both']),icon:z.string().max(50),color:z.string().regex(/^#[a-f0-9]{6}$/i),hidden:z.boolean(),favorite:z.boolean().optional(),builtin:z.boolean().optional(),special:z.boolean().optional(),parent:id.optional()})).max(2000).optional(),
- tx:z.array(z.object({id,name:text,bank:id,amt:money,cat:text,date,time,ref:id,person:text,note:text,flag:z.boolean(),transfer:id.optional(),accountMask:text.optional(),sms:z.object({sender:text,reference:id,accountMask:text.optional(),role:z.enum(['principal','fee']),parser:z.enum(['local','gemini']).optional(),model:text.optional(),feeParts:z.object({service:positive,vat:positive,disaster:positive}).optional()}).optional()})).max(100000),
+ tx:z.array(z.object({id,name:text,bank:id,amt:money,cat:text,date,time,ref:id,person:text,note:text,flag:z.boolean(),transfer:id.optional(),accountMask:text.optional(),sms:z.object({sender:text,reference:id,accountMask:text.optional(),role:z.enum(['principal','fee']),peerBank:text.optional(),peerAccountMask:text.optional(),relatedReference:id.optional(),grossDebit:money.negative().optional(),derivedFeeFor:id.optional(),parser:z.enum(['local','gemini']).optional(),model:text.optional(),feeParts:z.object({service:positive,vat:positive,disaster:positive}).optional()}).optional()})).max(100000),
  accounts:z.array(z.object({bank:id,bal:positive.nullable(),date:z.union([date,z.literal('')]),time:time.optional(),accountMask:text.optional(),balanceReceivedAt:positive.optional()})).max(1000),
  packages:z.array(z.object({type:text,size:text,end:date,id:id.optional(),name:text.optional(),start:text.optional(),endTime:time.optional(),bonus:text.optional(),usedPercent:z.number().min(0).max(100).optional(),status:z.enum(['active','exhausted']).optional(),reportedAt:text.optional(),source:z.literal('sms').optional()})),
  airtime:z.object({balance:positive,reportedAt:text}).optional(),smsEvents:z.array(text).optional(),
@@ -35,7 +36,7 @@ function cleanState(value:unknown):State{
  const transfers=new Map<string,State['tx']>();for(const r of s.tx)if(r.transfer)transfers.set(r.transfer,[...(transfers.get(r.transfer)||[]),r]);
  for(const rows of transfers.values())if(rows.length!==2||rows[0].amt+rows[1].amt!==0||accountKey(rows[0])===accountKey(rows[1]))throw Error('Backup contains an incomplete own-account transfer.');
  s.prefs=Object.fromEntries(Object.entries(s.prefs).filter(([k])=>preferenceKeys.has(k)));
- return cleanSmsReview(s);
+ return autoReconcileTransfers(cleanSmsReview(s));
 }
 async function digest(value:unknown){const bytes=new TextEncoder().encode(JSON.stringify(value));return Array.from(sha256(bytes),n=>n.toString(16).padStart(2,'0')).join('');}
 export async function createBackup(state:State){const data=cleanState(state);const result=JSON.stringify({app:'birrx',format:1,createdAt:new Date().toISOString(),checksum:await digest(data),data},null,2);if(new Blob([result]).size>MAX_BACKUP_BYTES)throw Error('Backup exceeds the 10 MB limit.');return result;}
@@ -52,7 +53,7 @@ export function prepareRestore(snapshot:State,current:State):State{
  // Permissions, notification delivery and scanner checkpoints belong to this installation.
  for(const k of ['notify_transactions','notify_plans','notify_goals','notify_recurring','notificationEvents','lock','workspaceOwner','notify_dailyInsights','notify_weeklyInsights']){delete s.prefs[k];if(current.prefs[k]!==undefined)s.prefs[k]=current.prefs[k];}
  s.prefs.fullSmsRescanPending='1';s.prefs.demoDataCleared='1';
- return cleanSmsReview(s);
+ return autoReconcileTransfers(cleanSmsReview(s));
 }
 export async function downloadBackup(contents:string){
  if(Capacitor.isNativePlatform()){

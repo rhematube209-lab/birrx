@@ -1,5 +1,6 @@
+import {matchTransfers,markTransferPair} from './transferMatching';
 export function uid(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
-export type SmsSource={sender:string;reference:string;accountMask?:string;role:'principal'|'fee';feeParts?:{service:number;vat:number;disaster:number};parser?:'local'|'gemini';model?:string};
+export type SmsSource={sender:string;reference:string;accountMask?:string;role:'principal'|'fee';feeParts?:{service:number;vat:number;disaster:number};peerBank?:string;peerAccountMask?:string;relatedReference?:string;grossDebit?:number;derivedFeeFor?:string;parser?:'local'|'gemini';model?:string};
 export type Tx={id:string;name:string;bank:string;amt:number;cat:string;date:string;time:string;ref:string;person:string;note:string;flag:boolean;transfer?:string;accountMask?:string;sms?:SmsSource};
 export type MobilePackage={type:string;size:string;end:string;id?:string;name?:string;start?:string;endTime?:string;bonus?:string;usedPercent?:number;status?:'active'|'exhausted';reportedAt?:string;source?:'sms'};
 export type Period={scope:'Year'|'Month'|'Day'|'Hour';date:string;hour:string};
@@ -138,31 +139,12 @@ const seen=new Set(s.tx.map(key));return inputs.map((r,i)=>{try{const candidates
 export const key=(r:Tx)=>accountKey(r).trim().toLowerCase()+'|'+(r.bank==='CBE'&&r.ref.startsWith('v2-')?r.ref.trim():r.ref.trim().toUpperCase());
 export function commit(s:State,p:Preview[]){const seen=new Set(s.tx.map(key));return {...s,tx:[...s.tx,...p.filter(p=>p.status==='Ready'&&p.record).map(p=>p.record!).filter(r=>{const k=key(r);if(seen.has(k))return false;seen.add(k);return true;})]};}
 export function exportCSV(rows:Tx[]){const quote=(v:string)=>'"'+(/^[=+@\-]/.test(v)?"'":'')+v.replaceAll('"','""')+'"';return ['date,time,bank,merchant,direction,amount,reference,category,person,note,account_mask',...rows.map(r=>[r.date,r.time,r.bank,r.name,r.amt<0?'Debit':'Credit',(Math.abs(r.amt)/100).toFixed(2),r.ref,r.cat,r.person,r.note,accountMaskOf(r)||''].map(quote).join(','))].join('\r\n');}
-export type TransferPair={key:string;legs:[Tx,Tx];decision:State['decision']};
-export function transferPairs(s:State):TransferPair[]{
- const groups=new Map<string,Tx[]>();
- for(const r of s.tx){if(!r.ref.trim()||!r.amt)continue;const k=r.ref.trim().toUpperCase()+'|'+r.date+'|'+Math.abs(r.amt);groups.set(k,[...(groups.get(k)||[]),r]);}
- const pairs:TransferPair[]=[];
- for(const incoming of s.tx.filter(r=>r.bank==='Telebirr'&&r.amt>0&&['Transfer from CBE','Transfer from BOA'].includes(r.name)&&r.sms)){
-  const sourceBank=incoming.name==='Transfer from BOA'?'BOA':'CBE';
-  const candidates=s.tx.filter(r=>r.bank===sourceBank&&r.amt===-incoming.amt&&r.date===incoming.date&&r.sms?.role==='principal'&&(!r.time||!incoming.time||Math.abs(Date.parse(r.date+'T'+r.time+'+03:00')-Date.parse(incoming.date+'T'+incoming.time+'+03:00'))<=10*60*1000));
-  const credits=s.tx.filter(r=>r.bank==='Telebirr'&&r.amt===incoming.amt&&r.date===incoming.date&&r.name===incoming.name);
-  if(candidates.length===1&&credits.length===1&&candidates[0].ref.toUpperCase()!==incoming.ref.toUpperCase())groups.set('bank-transfer|'+incoming.id,[candidates[0],incoming]);
- }
- for(const legs of groups.values()){
-  // Ambiguous statements never produce an automatic proposed pair.
-  if(legs.length!==2||accountKey(legs[0])===accountKey(legs[1])||legs[0].amt+legs[1].amt!==0)continue;
-  const [outgoing,incoming]=legs[0].amt<0?legs:[legs[1],legs[0]],key=[outgoing.id,incoming.id].sort().join('|');
-  const demo=legs.some(r=>r.id==='n9')&&legs.some(r=>r.id==='n10');
-  const decision=s.transferDecisions?.[key]||(demo?s.decision:outgoing.transfer&&outgoing.transfer===incoming.transfer?'confirmed':'pending');
-  pairs.push({key,legs:[outgoing,incoming],decision});
- }
- return pairs;
-}
+export type TransferPair={key:string;legs:[Tx,Tx];decision:State['decision'];automatic?:boolean;feeDifference?:number};
+export function transferPairs(s:State):TransferPair[]{return matchTransfers(s);}
 export function reconcilePair(s:State,key:string,decision:State['decision']):State{
  const pair=transferPairs(s).find(p=>p.key===key);if(!pair)throw Error('A unique opposite-direction pair on different accounts is required.');
  const ids=pair.legs.map(r=>r.id),demo=ids.includes('n9')&&ids.includes('n10');
- return {...s,decision:demo?decision:s.decision,transferDecisions:{...s.transferDecisions,[key]:decision},tx:s.tx.map(r=>ids.includes(r.id)?{...r,transfer:decision==='confirmed'?'own-'+key:undefined}:r)};
+ return {...s,decision:demo?decision:s.decision,transferDecisions:{...s.transferDecisions,[key]:decision},tx:decision==='confirmed'?markTransferPair(s,pair,'own-'+key).tx:s.tx.map(r=>ids.includes(r.id)?{...r,transfer:undefined}:r)};
 }
 export function deleteTransaction(s:State,id:string):State{
  const r=s.tx.find(r=>r.id===id);return {...s,decision:['n9','n10'].includes(id)?'pending':s.decision,tx:s.tx.filter(t=>t.id!==id).map(t=>r?.transfer&&t.transfer===r.transfer?{...t,transfer:undefined}:t)};

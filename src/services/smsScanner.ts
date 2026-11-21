@@ -1,11 +1,12 @@
+import {bankSenderRegistry} from '../bankRegistry';
 import {cleanSmsReview} from '../smsReview';
 import { commitSms, previewSms, type SmsEnvelope, type SmsPreview } from '../sms';
 import { clearDemoData as clearSeededDemoData, eatDate, type State } from '../domain';
 import {smsFingerprint} from '../smsIdentity';
 import { scanNativeInbox, type RawSmsMessage } from './androidSmsBridge';
 
-export const SUPPORTED_SENDERS = new Set([
-  'CBEBIR', 'CBE_BIRR', 'CBE-BIRR', 'CBE', 'BOA', '127', '994', '251994', '810', 'TELEBIRR',
+export const SUPPORTED_SENDERS = new Set([...Object.keys(bankSenderRegistry),
+  'APOLLO','APOLLOBOA','APOLLODIGITAL','APOLLO_DIGITAL','CBEBIR', 'CBE_BIRR', 'CBE-BIRR', 'CBE', 'BOA', '127', '994', '251994', '810', 'TELEBIRR',
   'AWASH', 'AWASHBANK', 'AWASH_BANK', 'DASHEN', 'DASHENBANK', 'DASHEN_BANK', 'COOP', 'COOPBANK',
   'HIBRET', 'NIB', 'WEGAGEN', 'ZEMEN', 'ZEMENBANK', 'ZEMEN_BANK', 'CBEBIRR', '844', 'AMHARA', 'SIINQEE'
 ]);
@@ -20,7 +21,7 @@ export const isSupportedSender = (sender: string): boolean => {
 
 export const OVERLAP_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours safe overlap window
 export const BATCH_SIZE = 50;
-export const SMS_PARSER_VERSION = '13';
+export const SMS_PARSER_VERSION = '16';
 
 export interface ScanProgress {
   stage: 'idle' | 'scanning' | 'processing' | 'done' | 'stopped' | 'error';
