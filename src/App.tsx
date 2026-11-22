@@ -1,3 +1,4 @@
+import {setAppUpdateReady,listenForUpdateInstall} from './services/appUpdates';
 import {autoReconcileTransfers} from './transferMatching';
 import {syncScreenshotAccess} from './services/screenshotAccess';
 import {passwordRecovery} from './services/passwordRecovery';
@@ -67,7 +68,7 @@ function AppContent({connectionReady,userId}:{connectionReady:boolean;userId:str
   const isStandalone=typeof window!=='undefined'&&(window.matchMedia('(display-mode: standalone)').matches||(navigator as any).standalone===true);
   const isInstalledApp=isStandalone||isAndroidNative();
   const isIOS=typeof navigator!=='undefined'&&/iPhone|iPad|iPod/.test(navigator.userAgent);
-  const saveQueue=useRef(Promise.resolve()),dialog=useRef<HTMLDialogElement>(null),returnFocus=useRef<HTMLElement|null>(null);
+  const saveFailed=useRef(false),saveQueue=useRef(Promise.resolve()),dialog=useRef<HTMLDialogElement>(null),returnFocus=useRef<HTMLElement|null>(null);
   const scrolls=useRef<Record<string,number>>({}),lastTab=useRef(tab),active=useRef<State|null>(null),unmatchedId=useRef<string|null>(null);
   const notificationKnown=useRef<Set<string>|null>(null);
   const restoring=useRef(false);
@@ -166,7 +167,7 @@ function AppContent({connectionReady,userId}:{connectionReady:boolean;userId:str
     void listenNotificationActions(target=>notificationRoute.current(target)).then(h=>{if(disposed)void h.remove();else remove=()=>h.remove();});
     return()=>{disposed=true;void remove?.();};
   },[storageReady]);
-  const update:Update=fn=>{const current=active.current;if(!current||restoring.current||activeAccount()!==userId)return;const next=autoReconcileTransfers(fn(current));active.current=next;setState(next);saveQueue.current=saveQueue.current.then(()=>persist(next,storageName)).catch(e=>setError('Changes could not be saved: '+e.message));};
+  const update:Update=fn=>{const current=active.current;if(!current||restoring.current||activeAccount()!==userId)return;const next=autoReconcileTransfers(fn(current));active.current=next;setState(next);saveQueue.current=saveQueue.current.then(()=>persist(next,storageName)).then(()=>{saveFailed.current=false;}).catch(e=>{saveFailed.current=true;setError('Changes could not be saved: '+e.message);});};
   async function restoreBackup(snapshot:State){
     if(restoring.current)throw Error('A restore is already running.');
     restoring.current=true;
@@ -201,6 +202,11 @@ function AppContent({connectionReady,userId}:{connectionReady:boolean;userId:str
     void refresh();const timer=setInterval(()=>void refresh(),15000);const unsubscribe=subscribeToAppResume(()=>void refresh());
     return()=>{disposed=true;clearInterval(timer);unsubscribe();};
   },[connectionReady,storageReady,signedIn,notificationSetupDone]);
+  useEffect(()=>listenForUpdateInstall(async()=>{await saveQueue.current;if(saveFailed.current)throw Error('Save your changes before installing the update.');},setError),[]);
+  useEffect(()=>{
+    setAppUpdateReady(connectionReady&&!splash&&authReady&&signedIn&&storageReady&&onboardingDone&&notificationSetupDone&&!locked&&!sheet&&!error,state?.prefs.language);
+    return()=>setAppUpdateReady(false);
+  },[connectionReady,splash,authReady,signedIn,storageReady,onboardingDone,notificationSetupDone,locked,sheet,error,state?.prefs.language]);
   if(splash||!authReady||(!state&&!error))return <main className="startup-splash" aria-label="Opening BirrX"><img src={document.documentElement.dataset.theme==='dark'?'/birrx-dark.svg':'/birrx-light.svg'} alt="BirrX"/></main>;
   if(!state)return <main className="app p-6"><p role="alert">{error}</p></main>;
   if(!signedIn)return <main className="startup-page auth-page"><div className="auth-brand"><img className="startup-logo" src={document.documentElement.dataset.theme==='dark'?'/birrx-dark.svg':'/birrx-light.svg'} alt="BirrX"/><span>Your money, in one place.</span></div><AccountPanel/></main>;
