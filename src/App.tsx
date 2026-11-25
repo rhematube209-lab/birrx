@@ -2,6 +2,7 @@ import {setAppUpdateReady,listenForUpdateInstall} from './services/appUpdates';
 import {autoReconcileTransfers} from './transferMatching';
 import {syncScreenshotAccess} from './services/screenshotAccess';
 import {passwordRecovery} from './services/passwordRecovery';
+import {RecoveryPage,isRecoveryLink} from './RecoveryPage';
 import {setActiveAccount,activeAccount,workspaceName,accountStorageKey} from './accountScope';
 import {DeleteAccountPage} from './DeleteAccountPage';
 import {clearDeviceAccountData} from './services/accountDeletion';
@@ -427,4 +428,4 @@ function AccountBoundary({connectionReady}:{connectionReady:boolean}){
  if(identity===undefined)return <main className="startup-splash" aria-label="Opening BirrX"/>;
  return <AppContent key={identity||'signed-out'} connectionReady={connectionReady} userId={identity}/>;
 }
-export default function App(){const [deleting,setDeleting]=useState(()=>location.hash==='#DeleteAccount');useEffect(()=>{const refresh=()=>setDeleting(location.hash==='#DeleteAccount');window.addEventListener('hashchange',refresh);window.addEventListener('popstate',refresh);return()=>{window.removeEventListener('hashchange',refresh);window.removeEventListener('popstate',refresh);};},[]);return <ConnectionGate>{ready=>deleting?<DeleteAccountPage/>:<AccountBoundary connectionReady={ready}/>}</ConnectionGate>;}
+export default function App(){const [recovering]=useState(()=>isRecoveryLink());const [deleting,setDeleting]=useState(()=>location.hash==='#DeleteAccount');useEffect(()=>{const refresh=()=>setDeleting(location.hash==='#DeleteAccount');window.addEventListener('hashchange',refresh);window.addEventListener('popstate',refresh);return()=>{window.removeEventListener('hashchange',refresh);window.removeEventListener('popstate',refresh);};},[]);if(recovering)return <RecoveryPage/>;return <ConnectionGate>{ready=>deleting?<DeleteAccountPage/>:<AccountBoundary connectionReady={ready}/>}</ConnectionGate>;}

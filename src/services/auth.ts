@@ -2,6 +2,8 @@ import {createClient} from '@supabase/supabase-js';
 
 const url=import.meta.env.VITE_SUPABASE_URL?.trim();
 const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+// Recovery links use a temporary, memory-only session, separate from the app workspace.
+export const createRecoveryClient=()=>url&&key?createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'birrx-recovery'}}):null;
 // Only the public project key belongs in a Vite build. Never use an admin key here.
 export const authClient=url&&key?createClient(url,key,{
  auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storageKey:'birrx-auth'}
